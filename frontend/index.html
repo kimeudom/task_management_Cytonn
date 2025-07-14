@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Task Management System - Organize and track your tasks efficiently" />
+  <meta name="theme-color" content="#ffffff" />
+  
+  <!-- Preconnect to Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  
+  <!-- Google Fonts - Inter -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Google Fonts - JetBrains Mono for code -->
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  
+  <title>Task Management System</title>
+  
+  <!-- Prevent FOUC (Flash of Unstyled Content) -->
+  <style>
+    /* Minimal critical CSS to prevent layout shift */
+    html {
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
+    }
+    
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #ffffff;
+      color: #111827;
+    }
+    
+    /* Dark mode detection */
+    @media (prefers-color-scheme: dark) {
+      body {
+        background-color: #111827;
+        color: #f9fafb;
+      }
+    }
+    
+    /* Loading screen styles */
+    #initial-loading {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+    
+    @media (prefers-color-scheme: dark) {
+      #initial-loading {
+        background-color: #111827;
+      }
+    }
+    
+    .loading-spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid #e5e7eb;
+      border-top: 3px solid #3b82f6;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    
+    @media (prefers-color-scheme: dark) {
+      .loading-spinner {
+        border-color: #374151;
+        border-top-color: #3b82f6;
+      }
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <!-- Initial loading screen -->
+  <div id="initial-loading">
+    <div class="loading-spinner"></div>
+  </div>
+  
+  <!-- Vue app mount point -->
+  <div id="app"></div>
+  
+  <!-- Remove loading screen when Vue app is ready -->
+  <script>
+    // Remove initial loading screen when DOM is loaded
+    document.addEventListener('DOMContentLoaded', function() {
+      setTimeout(function() {
+        const loadingElement = document.getElementById('initial-loading');
+        if (loadingElement) {
+          loadingElement.style.opacity = '0';
+          loadingElement.style.transition = 'opacity 0.3s ease';
+          setTimeout(function() {
+            loadingElement.remove();
+          }, 300);
+        }
+      }, 100);
+    });
+  </script>
+  
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
