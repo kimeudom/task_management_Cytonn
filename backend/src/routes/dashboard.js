@@ -46,7 +46,7 @@ router.get('/stats', authenticate, async (req, res, next) => {
           COUNT(*) FILTER (WHERE deadline < NOW() AND status NOT IN ('completed', 'cancelled')) as overdue_tasks,
           COUNT(*) FILTER (WHERE priority >= 4) as high_priority_tasks
         FROM tasks t
-        LEFT JOIN task_assigned_users tau ON t.id = tau.task_id
+        LEFT JOIN task_assigned_users tau ON t.task_id = tau.task_id
         WHERE (t.created_by = $1 OR tau.user_id = $1)
       `;
       paramCount++;
@@ -63,7 +63,7 @@ router.get('/stats', authenticate, async (req, res, next) => {
           COUNT(*) FILTER (WHERE deadline < NOW() AND status NOT IN ('completed', 'cancelled')) as overdue_tasks,
           COUNT(*) FILTER (WHERE priority >= 4) as high_priority_tasks
         FROM tasks t
-        JOIN task_assigned_users tau ON t.id = tau.task_id
+        JOIN task_assigned_users tau ON t.task_id = tau.task_id
         WHERE tau.user_id = $1
       `;
       paramCount++;
@@ -134,7 +134,7 @@ router.get('/recent-tasks', authenticate, async (req, res, next) => {
     if (userRole === 'admin') {
       // Admin sees all tasks, sorted by priority and deadline
       taskQuery = `
-        SELECT DISTINCT t.id, t.title, t.description, t.status, t.priority, t.deadline, 
+        SELECT DISTINCT t.task_id as id, t.title, t.description, t.status, t.priority, t.deadline,
                t.created_by, t.created_at, t.updated_at,
                u.first_name as creator_first_name, u.last_name as creator_last_name
         FROM tasks t
@@ -157,11 +157,11 @@ router.get('/recent-tasks', authenticate, async (req, res, next) => {
     } else if (userRole === 'manager') {
       // Manager sees tasks they created or are assigned to
       taskQuery = `
-        SELECT DISTINCT t.id, t.title, t.description, t.status, t.priority, t.deadline, 
+        SELECT DISTINCT t.task_id as id, t.title, t.description, t.status, t.priority, t.deadline,
                t.created_by, t.created_at, t.updated_at,
                u.first_name as creator_first_name, u.last_name as creator_last_name
         FROM tasks t
-        LEFT JOIN task_assigned_users tau ON t.id = tau.task_id
+        LEFT JOIN task_assigned_users tau ON t.task_id = tau.task_id
         LEFT JOIN users u ON t.created_by = u.user_id
         WHERE (t.created_by = $1 OR tau.user_id = $1)
         ORDER BY 
@@ -184,11 +184,11 @@ router.get('/recent-tasks', authenticate, async (req, res, next) => {
     } else {
       // User sees only assigned tasks
       taskQuery = `
-        SELECT DISTINCT t.id, t.title, t.description, t.status, t.priority, t.deadline, 
+        SELECT DISTINCT t.task_id as id, t.title, t.description, t.status, t.priority, t.deadline,
                t.created_by, t.created_at, t.updated_at,
                u.first_name as creator_first_name, u.last_name as creator_last_name
         FROM tasks t
-        JOIN task_assigned_users tau ON t.id = tau.task_id
+        JOIN task_assigned_users tau ON t.task_id = tau.task_id
         LEFT JOIN users u ON t.created_by = u.user_id
         WHERE tau.user_id = $1
         ORDER BY 
