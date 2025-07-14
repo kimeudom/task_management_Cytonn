@@ -24,7 +24,7 @@ const PORT = process.env.PORT || 3000;
 // Security middleware
 app.use(helmet());
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:8080',
+  origin: process.env.FRONTEND_URL,
   credentials: true
 }));
 
@@ -66,6 +66,16 @@ app.get('/health', async (req, res) => {
   }
 });
 
+// Optional root route handler
+app.get('/', (_, res) => {
+  res.status(200).send('API is running');
+});
+
+// Prevent favicon crash
+app.get('/favicon.ico', (_, res) => {
+  res.status(204).end(); // No Content
+});
+
 // API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
@@ -80,8 +90,8 @@ app.use('*', (_, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
 
-// Only start server if running locally (not on Vercel)
-if (require.main === module) {
+// Only start the server locally (not in production)
+if (process.env.NODE_ENV !== 'production') {
   app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
   });
