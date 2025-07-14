@@ -120,23 +120,14 @@
         closable
         @close="submitError = ''"
       />
-    </form>
 
-    <template #footer>
-      <BaseButton
-        variant="outline"
-        @click="handleClose"
-      >
-        Cancel
-      </BaseButton>
-      <BaseButton
-        variant="primary"
-        :loading="loading"
-        @click="handleSubmit"
-      >
-        {{ isEditing ? 'Update User' : 'Create User' }}
-      </BaseButton>
-    </template>
+      <div class="flex gap-2 mt-4 justify-end">
+        <button type="button" class="btn" @click="$emit('close')">Cancel</button>
+        <button v-if="mode==='edit'" type="button" class="btn btn-warning" @click="resetPassword">Reset Password</button>
+        <button v-if="mode!=='view'" type="submit" class="btn btn-primary">{{ mode==='create' ? 'Create' : 'Save' }}</button>
+      </div>
+      <div v-if="resetMessage" class="text-green-600 mt-2">{{ resetMessage }}</div>
+    </form>
   </BaseModal>
 </template>
 
@@ -145,6 +136,7 @@ import { ref, reactive, computed, watch } from 'vue'
 import { useToast } from 'vue-toastification'
 import { BaseModal, BaseInput, BaseButton, BaseAlert } from '@/components/ui'
 import { apiService } from '@/services/api'
+import userService from '@/services/users'
 
 const props = defineProps({
   modelValue: {
@@ -164,6 +156,7 @@ const toast = useToast()
 // Reactive state
 const loading = ref(false)
 const submitError = ref('')
+const resetMessage = ref('')
 
 const form = reactive({
   firstName: '',
@@ -352,6 +345,17 @@ const handleSubmit = async () => {
     submitError.value = error.response?.data?.message || error.message || 'An error occurred while saving the user'
   } finally {
     loading.value = false
+  }
+}
+
+async function resetPassword() {
+  error.value = '';
+  resetMessage.value = '';
+  try {
+    await userService.resetUserPassword(props.user.id);
+    resetMessage.value = 'Password reset link sent or password reset successfully.';
+  } catch (e) {
+    error.value = e?.response?.data?.error || e.message || 'Failed to reset password.';
   }
 }
 

@@ -264,6 +264,25 @@ class UserService {
 
     return new Error(error.message || 'An unexpected error occurred')
   }
+
+  /**
+   * Reset user password (Admin only)
+   * @param {number} id - User ID
+   * @returns {Promise<boolean>} Success status
+   */
+  async resetUserPassword(id) {
+    try {
+      // Call backend endpoint for password reset (implement if not present)
+      const response = await apiService.users.resetPassword(id)
+      if (response.data.success) {
+        return true
+      }
+      throw new Error(response.data.message || 'Failed to reset password')
+    } catch (error) {
+      console.error('Error resetting user password:', error)
+      throw this.handleError(error)
+    }
+  }
 }
 
 // Create singleton instance

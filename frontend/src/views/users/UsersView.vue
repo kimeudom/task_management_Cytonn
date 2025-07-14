@@ -22,14 +22,33 @@
           </BaseButton>
         </div>
       </div>
-
+      <!-- Filters -->
+      <div class="flex flex-wrap gap-2 mb-4">
+        <input
+          v-model="search"
+          placeholder="Search users..."
+          class="input input-bordered w-64"
+        />
+        <select v-model="filterRole" class="select select-bordered">
+          <option value="">All Roles</option>
+          <option value="admin">Admin</option>
+          <option value="manager">Manager</option>
+          <option value="user">User</option>
+        </select>
+        <select v-model="filterStatus" class="select select-bordered">
+          <option value="">All Status</option>
+          <option value="active">Active</option>
+          <option value="suspended">Suspended</option>
+          <option value="deleted">Deleted</option>
+        </select>
+      </div>
       <!-- Users List -->
       <BaseCard>
         <template #body>
           <div v-if="loading" class="flex justify-center py-8">
             <LoadingSpinner size="lg" text="Loading users..." />
           </div>
-          <div v-else-if="users.length === 0" class="text-center py-8">
+          <div v-else-if="filteredUsers.length === 0" class="text-center py-8">
             <UsersIcon class="h-12 w-12 text-gray-400 mx-auto mb-4" />
             <p class="text-gray-500 dark:text-gray-400">No users found</p>
           </div>
@@ -56,7 +75,7 @@
               </thead>
               <tbody class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
                 <tr
-                  v-for="user in users"
+                  v-for="user in filteredUsers"
                   :key="user.id"
                   class="hover:bg-gray-50 dark:hover:bg-gray-800"
                 >
@@ -128,6 +147,13 @@
                 </tr>
               </tbody>
             </table>
+            <!-- Pagination -->
+            <BasePagination
+              v-if="pages > 1"
+              :page="page"
+              :pages="pages"
+              @change-page="(p) => { page = p }"
+            />
           </div>
         </template>
       </BaseCard>
@@ -144,7 +170,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from 'vue-toastification'
@@ -174,6 +200,34 @@ const loading = ref(true)
 const showUserModal = ref(false)
 const selectedUser = ref(null)
 const users = ref([])
+const search = ref('')
+const filterRole = ref('')
+const filterStatus = ref('')
+const page = ref(1)
+const limit = ref(10)
+const total = ref(0)
+const pages = computed(() => Math.ceil(total.value / limit.value))
+
+const filteredUsers = computed(() => {
+  let filtered = users.value
+  if (search.value) {
+    const s = search.value.toLowerCase()
+    filtered = filtered.filter(u =>
+      u.firstName?.toLowerCase().includes(s) ||
+      u.lastName?.toLowerCase().includes(s) ||
+      u.email?.toLowerCase().includes(s) ||
+      u.username?.toLowerCase().includes(s)
+    )
+  }
+  if (filterRole.value) {
+    filtered = filtered.filter(u => u.role?.toLowerCase() === filterRole.value)
+  }
+  if (filterStatus.value) {
+    filtered = filtered.filter(u => u.status?.toLowerCase() === filterStatus.value)
+  }
+  total.value = filtered.length
+  return filtered.slice((page.value - 1) * limit.value, page.value * limit.value)
+})
 
 // Methods
 const formatDate = (date) => {
