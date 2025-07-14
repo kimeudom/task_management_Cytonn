@@ -24,7 +24,7 @@ const PORT = process.env.PORT || 3000;
 // Security middleware
 app.use(helmet());
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:8080',
+  origin: process.env.FRONTEND_URL,
   credentials: true
 }));
 
@@ -64,6 +64,16 @@ app.get('/health', async (req, res) => {
       }
     });
   }
+});
+
+// Optional root route handler
+app.get('/', (_, res) => {
+  res.status(200).send('API is running');
+});
+
+// Prevent favicon crash
+app.get('/favicon.ico', (_, res) => {
+  res.status(204).end(); // No Content
 });
 
 // API routes
