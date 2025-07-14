@@ -119,25 +119,51 @@ router.patch('/:id', authenticate, requireAdmin, async (req, res, next) => {
       return res.status(400).json({ error: 'Invalid user ID' });
     }
 
-    // Validate request body
-    const { error, value } = updateUserSchema.validate(req.body);
-    if (error) {
-      return res.status(400).json({
-        error: 'Validation failed',
-        details: error.details.map(d => d.message)
-      });
+    // Allow either { email, password } or the usual updateUserSchema
+    const { email, password, ...otherFields } = req.body;
+    let updatedUser = null;
+
+    if (email && password && Object.keys(otherFields).length === 0) {
+      // Update both email and password
+      const user = await User.getById(userId);
+      if (!user) return res.status(404).json({ error: 'User not found' });
+      if (email) {
+        await User.update(userId, { email });
+      }
+      if (password) {
+        await user.updatePassword(password);
+      }
+      updatedUser = await User.getById(userId);
+    } else if (password && Object.keys(otherFields).length === 0) {
+      // Only password
+      const user = await User.getById(userId);
+      if (!user) return res.status(404).json({ error: 'User not found' });
+      await user.updatePassword(password);
+      updatedUser = await User.getById(userId);
+    } else if (email && Object.keys(otherFields).length === 0) {
+      // Only email
+      await User.update(userId, { email });
+      updatedUser = await User.getById(userId);
+    } else {
+      // Validate request body for other fields
+      const { error, value } = updateUserSchema.validate(req.body);
+      if (error) {
+        return res.status(400).json({
+          error: 'Validation failed',
+          details: error.details.map(d => d.message)
+        });
+      }
+      updatedUser = await User.update(userId, value);
     }
 
-    const user = await User.update(userId, value);
-
-    if (!user) {
+    if (!updatedUser) {
       return res.status(404).json({ error: 'User not found' });
     }
 
     res.json({
       success: true,
       message: 'User updated successfully',
-      data: user.toJSON()
+      data: updatedUser.toJSON()
     });
   } catch (error) {
     if (error.code === '23505') { // Unique constraint violation

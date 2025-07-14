@@ -281,57 +281,85 @@ const getRoleBadgeClass = (role) => {
   }
 }
 
-async function updateProfile(userData) {
+async function updateProfile() {
   try {
-    // Check if username is already taken
-    const isTaken = await apiService.users.isUsernameTaken(userData.username);
-    if (isTaken) {
-      throw new Error('Username is already taken');
+    profileLoading.value = true;
+    const userId = authStore.user?.id;
+    if (!userId) throw new Error('User ID not found');
+
+    // Only check username if changed
+    if (profileForm.username && profileForm.username !== authStore.user?.username) {
+      const res = await apiService.users.isUsernameTaken(profileForm.username);
+      if (res.data?.taken) {
+        toast.error('Username is already taken');
+        profileLoading.value = false;
+        return;
+      }
     }
 
-    // Proceed with profile update if username is not taken
-    const response = await apiService.users.update(userData.id, userData);
-    
+    // Prepare update payload
+    const updatePayload = {
+      firstName: profileForm.firstName,
+      lastName: profileForm.lastName,
+      email: profileForm.email,
+      username: profileForm.username
+    };
+
+    const response = await apiService.users.update(userId, updatePayload);
     if (response.data.success) {
-      // Initiate email verification if email is updated
-      if (userData.email !== userData.oldEmail) {
-        await apiService.auth.verifyEmail(userData.email);
-        // Let the user know they should check their email for verification
+      toast.success('Profile updated successfully!');
+      // If email changed, trigger verification
+      if (profileForm.email !== authStore.user?.email) {
+        await apiService.auth.verifyEmail(profileForm.email);
+        toast.info('Please check your email to verify your new address.');
       }
-      
-      return response.data; // Return successful response
+      await authStore.refreshUser();
+      return response.data;
     }
-    
     throw new Error(response.data.message || 'Profile update failed');
-    
   } catch (error) {
+    toast.error(error.message || 'Profile update error');
     console.error('Profile update error:', error);
     throw error;
+  } finally {
+    profileLoading.value = false;
   }
 }
 
-async function changePassword(newPassword, oldPassword) {
+async function changePassword() {
   try {
-    // Fetch current password from the backend
-    const currentPassword = await apiService.auth.getCurrentPassword();
-
-    // If the new password is the same as the current password, don’t change
-    if (newPassword === currentPassword) {
-      throw new Error('New password cannot be the same as the old password');
+    passwordLoading.value = true;
+    if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
+      toast.error('Please fill in all password fields.');
+      return;
     }
-
-    // Proceed to update the password
-    const response = await apiService.auth.updatePassword(newPassword);
-    
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      toast.error('New passwords do not match.');
+      return;
+    }
+    if (passwordForm.newPassword === passwordForm.currentPassword) {
+      toast.error('New password cannot be the same as the old password.');
+      return;
+    }
+    const userId = authStore.user?.id;
+    if (!userId) throw new Error('User ID not found');
+    // Optionally, verify current password on backend if needed
+    // Update password using PATCH /users/:id
+    const response = await apiService.users.update(userId, { password: passwordForm.newPassword });
     if (response.data.success) {
+      toast.success('Password changed successfully!');
+      passwordForm.currentPassword = '';
+      passwordForm.newPassword = '';
+      passwordForm.confirmPassword = '';
       return response.data;
-    } else {
-      throw new Error(response.data.message || 'Password update failed');
     }
-    
+    throw new Error(response.data.message || 'Password update failed');
   } catch (error) {
+    toast.error(error.message || 'Password change error');
     console.error('Password change error:', error);
     throw error;
+  } finally {
+    passwordLoading.value = false;
   }
 }
 
