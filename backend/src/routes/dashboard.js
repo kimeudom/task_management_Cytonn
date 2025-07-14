@@ -134,7 +134,7 @@ router.get('/recent-tasks', authenticate, async (req, res, next) => {
     if (userRole === 'admin') {
       // Admin sees all tasks, sorted by priority and deadline
       taskQuery = `
-        SELECT DISTINCT t.task_id as id, t.title, t.description, t.status, t.priority, t.deadline,
+        SELECT t.task_id as id, t.title, t.description, t.status, t.priority, t.deadline,
                t.created_by, t.created_at, t.updated_at,
                u.first_name as creator_first_name, u.last_name as creator_last_name
         FROM tasks t
@@ -157,7 +157,7 @@ router.get('/recent-tasks', authenticate, async (req, res, next) => {
     } else if (userRole === 'manager') {
       // Manager sees tasks they created or are assigned to
       taskQuery = `
-        SELECT DISTINCT t.task_id as id, t.title, t.description, t.status, t.priority, t.deadline,
+        SELECT t.task_id as id, t.title, t.description, t.status, t.priority, t.deadline,
                t.created_by, t.created_at, t.updated_at,
                u.first_name as creator_first_name, u.last_name as creator_last_name
         FROM tasks t
@@ -184,7 +184,7 @@ router.get('/recent-tasks', authenticate, async (req, res, next) => {
     } else {
       // User sees only assigned tasks
       taskQuery = `
-        SELECT DISTINCT t.task_id as id, t.title, t.description, t.status, t.priority, t.deadline,
+        SELECT t.task_id as id, t.title, t.description, t.status, t.priority, t.deadline,
                t.created_by, t.created_at, t.updated_at,
                u.first_name as creator_first_name, u.last_name as creator_last_name
         FROM tasks t
