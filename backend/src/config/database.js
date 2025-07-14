@@ -29,6 +29,11 @@ const dbConfig = process.env.DATABASE_URL
 
 const pool = new Pool(dbConfig);
 
+// Set search_path to public for every new connection
+pool.on('connect', client => {
+  client.query('SET search_path TO public');
+});
+
 // Connection event handlers
 
 pool.on('error', (err, client) => {
