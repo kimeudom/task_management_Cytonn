@@ -11,19 +11,21 @@ dotenv.config();
 const { Pool } = pg;
 
 // Database configuration
-const dbConfig = {
-  host: process.env.DB_HOST,
-  port: parseInt(process.env.DB_PORT, 10),
-  database: process.env.DB_NAME,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  max: 20, // Maximum number of clients in the pool
-  idleTimeoutMillis: 30000, // How long a client is allowed to remain idle
-  connectionTimeoutMillis: 2000, // How long to wait when connecting a client
-  statement_timeout: 30000, // How long to wait for a query to complete
-  query_timeout: 30000,
-  application_name: 'task_management_api'
-};
+const dbConfig = process.env.DATABASE_URL
+  ? { connectionString: process.env.DATABASE_URL }
+  : {
+      host: process.env.DB_HOST,
+      port: parseInt(process.env.DB_PORT, 10),
+      database: process.env.DB_NAME,
+      user: process.env.DB_USER,
+      password: process.env.DB_PASSWORD,
+      max: 20, // Maximum number of clients in the pool
+      idleTimeoutMillis: 30000, // How long a client is allowed to remain idle
+      connectionTimeoutMillis: 2000, // How long to wait when connecting a client
+      statement_timeout: 30000, // How long to wait for a query to complete
+      query_timeout: 30000,
+      application_name: 'task_management_api'
+    };
 
 const pool = new Pool(dbConfig);
 

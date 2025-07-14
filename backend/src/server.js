@@ -81,7 +81,7 @@ app.use('*', (_, res) => {
 });
 
 // Only start server if running locally (not on Vercel)
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (require.main === module) {
   app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
   });
