@@ -18,15 +18,29 @@ import { checkDatabaseStatus } from './models/schema.js';
 
 dotenv.config();
 
+// CORS allowed origins setup
+const allowedOrigins = process.env.FRONTEND_URLS
+  ? process.env.FRONTEND_URLS.split(',')
+  : [process.env.FRONTEND_URL || 'http://localhost:8080'];
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Security middleware
 app.use(helmet());
 app.use(cors({
-  origin: process.env.FRONTEND_URL,
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true
 }));
+
+// Enable pre-flight for all routes
+app.options('*', cors());
 
 // Rate limiting
 const limiter = rateLimit({
