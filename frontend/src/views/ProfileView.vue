@@ -229,6 +229,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from 'vue-toastification'
+import { apiService } from '@/services/api'
 
 // Composables
 const authStore = useAuthStore()
@@ -280,48 +281,62 @@ const getRoleBadgeClass = (role) => {
   }
 }
 
-const updateProfile = async () => {
+async function updateProfile(userData) {
   try {
-    profileLoading.value = true
+    // Check if username is already taken
+    const isTaken = await apiService.users.isUsernameTaken(userData.username);
+    if (isTaken) {
+      throw new Error('Username is already taken');
+    }
+
+    // Proceed with profile update if username is not taken
+    const response = await apiService.users.update(userData.id, userData);
     
-    // TODO: Implement profile update API call
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    if (response.data.success) {
+      // Initiate email verification if email is updated
+      if (userData.email !== userData.oldEmail) {
+        await apiService.auth.verifyEmail(userData.email);
+        // Let the user know they should check their email for verification
+      }
+      
+      return response.data; // Return successful response
+    }
     
-    toast.success('Profile updated successfully!')
+    throw new Error(response.data.message || 'Profile update failed');
+    
   } catch (error) {
-    console.error('Error updating profile:', error)
-    toast.error('Failed to update profile')
-  } finally {
-    profileLoading.value = false
+    console.error('Profile update error:', error);
+    throw error;
   }
 }
 
-const changePassword = async () => {
-  if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-    toast.error('New passwords do not match')
-    return
-  }
-  
+async function changePassword(newPassword, oldPassword) {
   try {
-    passwordLoading.value = true
+    // Fetch current password from the backend
+    const currentPassword = await apiService.auth.getCurrentPassword();
+
+    // If the new password is the same as the current password, don’t change
+    if (newPassword === currentPassword) {
+      throw new Error('New password cannot be the same as the old password');
+    }
+
+    // Proceed to update the password
+    const response = await apiService.auth.updatePassword(newPassword);
     
-    // TODO: Implement password change API call
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    if (response.data.success) {
+      return response.data;
+    } else {
+      throw new Error(response.data.message || 'Password update failed');
+    }
     
-    // Reset form
-    passwordForm.currentPassword = ''
-    passwordForm.newPassword = ''
-    passwordForm.confirmPassword = ''
-    
-    toast.success('Password changed successfully!')
   } catch (error) {
-    console.error('Error changing password:', error)
-    toast.error('Failed to change password')
-  } finally {
-    passwordLoading.value = false
+    console.error('Password change error:', error);
+    throw error;
   }
 }
 
+// TODO: Backend logic to handle settings update
+// TODO: Implement profile update API call
 const updateSettings = async () => {
   try {
     settingsLoading.value = true
