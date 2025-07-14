@@ -255,6 +255,7 @@ const viewMode = ref('cards')
 const searchQuery = ref('')
 const tasks = ref([])
 const availableUsers = ref([])
+const totalTasks = ref(0)
 
 // Pagination and filter state for fetchTasks
 const currentPage = ref(1)

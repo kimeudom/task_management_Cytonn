@@ -220,10 +220,4 @@ router.beforeEach(async (to, from, next) => {
   await metaGuard(to, from, next)
 })
 
-// Global after guards
-router.afterEach((to, from) => {
-  // You can add analytics tracking here
-  console.log(`Navigated from ${from.name} to ${to.name}`)
-})
-
 export default router
