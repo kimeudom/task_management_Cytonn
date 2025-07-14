@@ -152,64 +152,114 @@
             <ClipboardDocumentListIcon class="h-12 w-12 text-gray-400 mx-auto mb-4" />
             <p class="text-gray-500 dark:text-gray-400">No tasks found</p>
           </div>
-          <div v-else class="space-y-4">
-            <div
-              v-for="task in filteredTasks"
-              :key="task.id"
-              class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md transition-shadow duration-200"
-            >
-              <div class="flex items-start justify-between">
-                <div class="flex-1">
-                  <h3 class="text-lg font-medium text-gray-900 dark:text-white">
-                    {{ task.title }}
-                  </h3>
-                  <p class="text-gray-600 dark:text-gray-400 mt-1">
-                    {{ task.description }}
-                  </p>
-                  <div class="flex items-center space-x-4 mt-3">
-                    <span
-                      class="badge"
-                      :class="getStatusBadgeClass(task.status)"
+          <div v-else>
+            <!-- View Mode: Cards -->
+            <div v-if="viewMode === 'cards'" class="space-y-4">
+              <div
+                v-for="task in filteredTasks"
+                :key="task.id"
+                class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md transition-shadow duration-200"
+              >
+                <div class="flex items-start justify-between">
+                  <div class="flex-1">
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-white">
+                      {{ task.title }}
+                    </h3>
+                    <p class="text-gray-600 dark:text-gray-400 mt-1">
+                      {{ task.description }}
+                    </p>
+                    <div class="flex items-center space-x-4 mt-3">
+                      <span
+                        class="badge"
+                        :class="getStatusBadgeClass(task.status)"
+                      >
+                        {{ task.status }}
+                      </span>
+                      <span
+                        class="badge"
+                        :class="getPriorityBadgeClass(task.priority)"
+                      >
+                        {{ task.priority }}
+                      </span>
+                      <span class="text-sm text-gray-500 dark:text-gray-400">
+                        Due: {{ formatDate(task.deadline) }}
+                      </span>
+                    </div>
+                  </div>
+                  <div class="flex items-center space-x-2 ml-4">
+                    <button
+                      @click="viewTask(task)"
+                      class="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                      title="View task"
                     >
-                      {{ task.status }}
-                    </span>
-                    <span
-                      class="badge"
-                      :class="getPriorityBadgeClass(task.priority)"
+                      <EyeIcon class="h-5 w-5" />
+                    </button>
+                    <button
+                      v-if="canEditTask(task)"
+                      @click="editTask(task)"
+                      class="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                      title="Edit task"
                     >
-                      {{ task.priority }}
-                    </span>
-                    <span class="text-sm text-gray-500 dark:text-gray-400">
-                      Due: {{ formatDate(task.deadline) }}
-                    </span>
+                      <PencilIcon class="h-5 w-5" />
+                    </button>
+                    <button
+                      v-if="canDeleteTask(task)"
+                      @click="deleteTask(task)"
+                      class="p-2 text-gray-400 hover:text-red-600"
+                      title="Delete task"
+                    >
+                      <TrashIcon class="h-5 w-5" />
+                    </button>
                   </div>
                 </div>
-                <div class="flex items-center space-x-2 ml-4">
-                  <button
-                    @click="viewTask(task)"
-                    class="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                    title="View task"
-                  >
-                    <EyeIcon class="h-5 w-5" />
-                  </button>
-                  <button
-                    v-if="canEditTask(task)"
-                    @click="editTask(task)"
-                    class="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                    title="Edit task"
-                  >
-                    <PencilIcon class="h-5 w-5" />
-                  </button>
-                  <button
-                    v-if="canDeleteTask(task)"
-                    @click="deleteTask(task)"
-                    class="p-2 text-gray-400 hover:text-red-600"
-                    title="Delete task"
-                  >
-                    <TrashIcon class="h-5 w-5" />
-                  </button>
-                </div>
               </div>
+            </div>
+            <!-- View Mode: List -->
+            <table v-else class="min-w-full divide-y divide-gray-200 dark:divide-gray-700 mt-2">
+              <thead>
+                <tr>
+                  <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Title</th>
+                  <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Status</th>
+                  <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Priority</th>
+                  <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Due</th>
+                  <th class="px-4 py-2"></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="task in filteredTasks" :key="task.id" class="hover:bg-gray-50 dark:hover:bg-gray-800">
+                  <td class="px-4 py-2 font-medium text-gray-900 dark:text-white">{{ task.title }}</td>
+                  <td class="px-4 py-2"><span class="badge" :class="getStatusBadgeClass(task.status)">{{ task.status }}</span></td>
+                  <td class="px-4 py-2"><span class="badge" :class="getPriorityBadgeClass(task.priority)">{{ task.priority }}</span></td>
+                  <td class="px-4 py-2 text-sm text-gray-500 dark:text-gray-400">{{ formatDate(task.deadline) }}</td>
+                  <td class="px-4 py-2 flex space-x-2">
+                    <button @click="viewTask(task)" class="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" title="View task"><EyeIcon class="h-5 w-5" /></button>
+                    <button v-if="canEditTask(task)" @click="editTask(task)" class="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" title="Edit task"><PencilIcon class="h-5 w-5" /></button>
+                    <button v-if="canDeleteTask(task)" @click="deleteTask(task)" class="p-2 text-gray-400 hover:text-red-600" title="Delete task"><TrashIcon class="h-5 w-5" /></button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <!-- Pagination -->
+            <div v-if="totalTasks > pageSize" class="flex justify-end mt-6">
+              <nav class="inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                <button
+                  class="px-3 py-1 rounded-l-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  :disabled="currentPage === 1"
+                  @click="changePage(currentPage - 1)"
+                >
+                  Prev
+                </button>
+                <span class="px-4 py-1 border-t border-b border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200">
+                  Page {{ currentPage }} of {{ Math.ceil(totalTasks / pageSize) }}
+                </span>
+                <button
+                  class="px-3 py-1 rounded-r-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  :disabled="currentPage === Math.ceil(totalTasks / pageSize)"
+                  @click="changePage(currentPage + 1)"
+                >
+                  Next
+                </button>
+              </nav>
             </div>
           </div>
         </div>
@@ -350,6 +400,12 @@ const filteredTasks = computed(() => {
 const formatDate = (date) => {
   if (!date) return 'No deadline'
   return format(new Date(date), 'MMM dd, yyyy')
+}
+
+const changePage = (page) => {
+  if (page < 1 || page > Math.ceil(totalTasks.value / pageSize.value)) return
+  currentPage.value = page
+  fetchTasks()
 }
 
 const getStatusBadgeClass = (status) => {

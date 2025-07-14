@@ -21,11 +21,12 @@ class Task {
     this.updatedAt = taskData.updated_at || taskData.updatedAt;
     // For assigned users (from join)
     this.assignedUsers = taskData.assignedUsers || [];
+    this.parentTaskId = taskData.parent_task_id || taskData.parentTaskId || null;
   }
 
   // Create a new task
   static async create(taskData) {
-    const { title, description, priority = 1, deadline, createdBy, assignedUsers = [] } = taskData;
+    const { title, description, priority = 1, deadline, createdBy, assignedUsers = [], parentTaskId = null } = taskData;
 
     const client = await pool.connect();
 
@@ -34,12 +35,12 @@ class Task {
 
       // Insert task
       const taskQuery = `
-        INSERT INTO tasks (title, description, status, priority, deadline, created_by)
-        VALUES ($1, $2, $3, $4, $5, $6)
-        RETURNING task_id, title, description, status, priority, deadline, created_by, created_at, updated_at
+        INSERT INTO tasks (title, description, status, priority, deadline, created_by, parent_task_id)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        RETURNING task_id, title, description, status, priority, deadline, created_by, created_at, updated_at, parent_task_id
       `;
 
-      const taskValues = [title, description, 'pending', priority, deadline, createdBy];
+      const taskValues = [title, description, 'pending', priority, deadline, createdBy, parentTaskId];
       const taskResult = await client.query(taskQuery, taskValues);
       const task = new Task(taskResult.rows[0]);
 
@@ -477,7 +478,8 @@ class Task {
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
       creator: this.creator,
-      assignedUsers: this.assignedUsers
+      assignedUsers: this.assignedUsers,
+      parentTaskId: this.parentTaskId
     };
   }
 }

@@ -17,7 +17,8 @@ const createTaskSchema = Joi.object({
   description: Joi.string().max(2000),
   priority: Joi.number().integer().min(1).max(5).default(1),
   deadline: Joi.date().iso().min('now'),
-  assignedUsers: Joi.array().items(Joi.number().integer().positive()).default([])
+  assignedUsers: Joi.array().items(Joi.number().integer().positive()).default([]),
+  parentTaskId: Joi.number().integer().positive().allow(null)
 });
 
 const updateTaskSchema = Joi.object({
@@ -26,7 +27,8 @@ const updateTaskSchema = Joi.object({
   status: Joi.string().valid('pending', 'inprogress', 'completed', 'archived'),
   priority: Joi.number().integer().min(1).max(5),
   deadline: Joi.date().iso(),
-  assignedUsers: Joi.array().items(Joi.number().integer().positive())
+  assignedUsers: Joi.array().items(Joi.number().integer().positive()),
+  parentTaskId: Joi.number().integer().positive().allow(null)
 }).min(1);
 
 const statusUpdateSchema = Joi.object({
@@ -101,6 +103,21 @@ router.post('/', authenticate, requireManagerOrAdmin, async (req, res, next) => 
 
     // Set creator
     value.createdBy = req.user.id;
+
+    // Sub-task deadline validation
+    if (value.parentTaskId) {
+      const parentTask = await Task.findById(value.parentTaskId);
+      if (!parentTask) {
+        return res.status(400).json({ error: 'Parent task not found' });
+      }
+      if (value.deadline && parentTask.deadline && (new Date(value.deadline) > new Date(parentTask.deadline))) {
+        return res.status(400).json({ error: 'Sub-task deadline must be within parent task duration' });
+      }
+      // Only managers/admins can assign users to sub-tasks
+      if (req.user.role !== 'admin' && req.user.role !== 'manager' && value.assignedUsers && value.assignedUsers.length > 0) {
+        return res.status(403).json({ error: 'Only managers and admins can assign users to sub-tasks' });
+      }
+    }
 
     const task = await Task.create(value);
 
@@ -177,6 +194,21 @@ router.patch('/:id', authenticate, requireManagerOrAdmin, async (req, res, next)
 
     if (!task) {
       return res.status(404).json({ error: 'Task not found' });
+    }
+
+    // Sub-task deadline validation
+    if (value.parentTaskId) {
+      const parentTask = await Task.findById(value.parentTaskId);
+      if (!parentTask) {
+        return res.status(400).json({ error: 'Parent task not found' });
+      }
+      if (value.deadline && parentTask.deadline && (new Date(value.deadline) > new Date(parentTask.deadline))) {
+        return res.status(400).json({ error: 'Sub-task deadline must be within parent task duration' });
+      }
+      // Only managers/admins can assign users to sub-tasks
+      if (req.user.role !== 'admin' && req.user.role !== 'manager' && value.assignedUsers && value.assignedUsers.length > 0) {
+        return res.status(403).json({ error: 'Only managers and admins can assign users to sub-tasks' });
+      }
     }
 
     res.json({

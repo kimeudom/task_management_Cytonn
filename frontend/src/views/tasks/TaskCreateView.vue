@@ -66,8 +66,9 @@
                   <label class="form-label">Deadline</label>
                   <input
                     v-model="form.deadline"
-                    type="datetime-local"
+                    type="date"
                     class="form-input"
+                    :max="parentTaskDeadline || null"
                   />
                   <div v-if="errors.deadline" class="form-error">{{ errors.deadline }}</div>
                 </div>
@@ -278,17 +279,5 @@ onMounted(() => {
 .required::after {
   content: ' *';
   color: #ef4444;
-}
-
-.form-checkbox {
-  @apply h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500;
-}
-
-.form-error {
-  @apply text-sm text-red-600 mt-1;
-}
-
-.spinner {
-  @apply animate-spin rounded-full border-2 border-gray-300 border-t-blue-600;
 }
 </style>
