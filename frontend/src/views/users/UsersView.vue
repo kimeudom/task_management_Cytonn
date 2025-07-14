@@ -74,7 +74,7 @@
       <div class="bg-white dark:bg-gray-800 shadow-sm rounded-lg overflow-hidden">
         <!-- Loading state -->
         <div v-if="loading" class="p-6 text-center">
-          <div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+          <div class="spinner h-8 w-8"></div>
           <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Loading users...</p>
         </div>
 
