@@ -284,7 +284,7 @@ router.post('/:id/assign', authenticate, requireManagerOrAdmin, async (req, res,
       return res.status(400).json({ error: 'User to assign does not exist' });
     }
 
-    const task = await Task.update(taskId, { assignedUsers: [parseInt(userId)] }, req.user.id, req.user.role);
+    const task = await Task.updateAssignments(taskId, [parseInt(userId)], req.user.id);
 
     if (!task) {
       return res.status(404).json({ error: 'Task not found' });
@@ -319,7 +319,7 @@ router.delete('/:id/assign', authenticate, requireManagerOrAdmin, async (req, re
       });
     }
 
-    const task = await Task.update(taskId, { assignedUsers: [] }, req.user.id, req.user.role);
+    const task = await Task.updateAssignments(taskId, [], req.user.id);
 
     if (!task) {
       return res.status(404).json({ error: 'Task not found' });
@@ -334,6 +334,60 @@ router.delete('/:id/assign', authenticate, requireManagerOrAdmin, async (req, re
     if (error.message.includes('Insufficient permissions')) {
       return res.status(403).json({ error: error.message });
     }
+    next(error);
+  }
+});
+
+// POST /api/tasks/:id/self-assign - Allow users to self-assign to tasks
+router.post('/:id/self-assign', authenticate, async (req, res, next) => {
+  try {
+    const taskId = parseInt(req.params.id);
+    const userId = req.user.id;
+
+    if (isNaN(taskId)) {
+      return res.status(400).json({ error: 'Invalid task ID' });
+    }
+
+    // Check if task exists
+    const task = await Task.findById(taskId);
+    if (!task) {
+      return res.status(404).json({ error: 'Task not found' });
+    }
+
+    // Users can only self-assign to tasks that are already assigned to them as sub-tasks
+    // or tasks they have permission to view
+    if (req.user.role === 'user') {
+      // Check if user is already assigned to this task or its parent task
+      const isAssigned = task.assignedUsers.some(user => user.id === userId);
+      if (!isAssigned) {
+        return res.status(403).json({
+          error: 'You can only self-assign to tasks you are already assigned to or sub-tasks under your assigned tasks'
+        });
+      }
+    }
+
+    // Check if user is already assigned
+    const alreadyAssigned = task.assignedUsers.some(user => user.id === userId);
+    if (alreadyAssigned) {
+      return res.status(400).json({ error: 'You are already assigned to this task' });
+    }
+
+    // Add user to assigned users
+    const currentAssignedIds = task.assignedUsers.map(user => user.id);
+    const updatedAssignedIds = [...currentAssignedIds, userId];
+
+    const updatedTask = await Task.update(taskId, { assignedUsers: updatedAssignedIds }, userId, req.user.role);
+
+    if (!updatedTask) {
+      return res.status(500).json({ error: 'Failed to self-assign to task' });
+    }
+
+    res.json({
+      success: true,
+      message: 'Successfully self-assigned to task',
+      data: updatedTask.toJSON()
+    });
+  } catch (error) {
     next(error);
   }
 });

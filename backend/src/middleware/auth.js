@@ -163,7 +163,7 @@ export const authenticate = async (req, res, next) => {
 
     // Get fresh user data from database
     const user = await User.findById(decoded.id);
-    
+
     if (!user) {
       return res.status(401).json({
         error: 'User not found',
@@ -171,10 +171,18 @@ export const authenticate = async (req, res, next) => {
       });
     }
 
+    // Check if user email is verified
+    if (!user.isVerified) {
+      return res.status(403).json({
+        error: 'Email verification required. Please verify your email address to access this resource.',
+        code: 'EMAIL_NOT_VERIFIED'
+      });
+    }
+
     // Attach user and token to request
     req.user = user;
     req.token = token;
-    
+
     next();
   } catch (error) {
     if (error.name === 'TokenExpiredError') {
@@ -273,3 +281,72 @@ export const requireManagerOrAdmin = authorize('manager', 'admin');
  * Any authenticated user authorization
  */
 export const requireAuth = authenticate;
+
+/**
+ * Authentication middleware that allows unverified users
+ * Used for routes that unverified users need access to (like email verification)
+ */
+export const authenticateAllowUnverified = async (req, res, next) => {
+  try {
+    const token = extractToken(req);
+
+    if (!token) {
+      return res.status(401).json({
+        error: 'Access token required',
+        code: 'TOKEN_MISSING'
+      });
+    }
+
+    // Check if token is blacklisted
+    const isBlacklisted = await isTokenBlacklisted(token);
+    if (isBlacklisted) {
+      return res.status(401).json({
+        error: 'Token has been invalidated',
+        code: 'TOKEN_BLACKLISTED'
+      });
+    }
+
+    // Verify token
+    const decoded = verifyToken(token);
+
+    // Ensure it's an access token
+    if (decoded.type !== 'access') {
+      return res.status(401).json({
+        error: 'Invalid token type',
+        code: 'INVALID_TOKEN_TYPE'
+      });
+    }
+
+    // Get fresh user data from database
+    const user = await User.findById(decoded.id);
+
+    if (!user) {
+      return res.status(401).json({
+        error: 'User not found',
+        code: 'USER_NOT_FOUND'
+      });
+    }
+
+    // Attach user and token to request (no email verification check)
+    req.user = user;
+    req.token = token;
+
+    next();
+  } catch (error) {
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({
+        error: 'Token expired',
+        code: 'TOKEN_EXPIRED'
+      });
+    }
+
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({
+        error: 'Invalid token',
+        code: 'TOKEN_INVALID'
+      });
+    }
+
+    next(error);
+  }
+};

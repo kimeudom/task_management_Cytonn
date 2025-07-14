@@ -5,6 +5,8 @@
  */
 
 import pool from '../config/database.js';
+import taskNotificationService from '../services/taskNotificationService.js';
+import User from './User.js';
 
 class Task {
   constructor(taskData) {
@@ -56,6 +58,21 @@ class Task {
       }
 
       await client.query('COMMIT');
+
+      // Send email notifications for task assignment (async, don't block response)
+      if (assignedUsers.length > 0) {
+        setImmediate(async () => {
+          try {
+            const createdByUser = await User.findById(createdBy);
+            if (createdByUser) {
+              await taskNotificationService.notifyTaskAssignment(task, assignedUsers, createdByUser);
+            }
+          } catch (emailError) {
+            console.error('Failed to send task assignment emails:', emailError);
+          }
+        });
+      }
+
       return task;
     } catch (error) {
       await client.query('ROLLBACK');
@@ -338,33 +355,112 @@ class Task {
 
   // Update task status (users can update status of assigned tasks)
   static async updateStatus(id, status, userId, userRole) {
-    const validStatuses = ['pending', 'in_progress', 'completed', 'cancelled'];
+    const validStatuses = ['pending', 'inprogress', 'completed', 'archived'];
     if (!validStatuses.includes(status)) {
       throw new Error('Invalid status');
     }
 
-    // Check permissions
+    // Check permissions and get existing task
     const existingTask = await Task.findById(id);
     if (!existingTask) {
       throw new Error('Task not found');
     }
 
-    if (userRole === 'user' && existingTask.assignedTo !== userId) {
+    // Check if user is assigned to the task
+    const isAssigned = existingTask.assignedUsers.some(user => user.id === userId);
+    if (userRole === 'User' && !isAssigned) {
       throw new Error('You can only update status of tasks assigned to you');
     }
 
+    const oldStatus = existingTask.status;
+
     const query = `
-      UPDATE tasks 
+      UPDATE tasks
       SET status = $1, updated_at = NOW()
-      WHERE id = $2
-      RETURNING id, title, description, status, priority, due_date, created_by, assigned_to, created_at, updated_at
+      WHERE task_id = $2
+      RETURNING task_id, title, description, status, priority, deadline, created_by, created_at, updated_at
     `;
 
     try {
       const result = await pool.query(query, [status, id]);
-      return result.rows.length > 0 ? new Task(result.rows[0]) : null;
+      if (result.rows.length === 0) {
+        return null;
+      }
+
+      const updatedTask = new Task(result.rows[0]);
+      updatedTask.assignedUsers = existingTask.assignedUsers; // Preserve assigned users
+
+      // Send email notifications for status change (async, don't block response)
+      if (oldStatus !== status) {
+        setImmediate(async () => {
+          try {
+            const changedByUser = await User.findById(userId);
+            if (changedByUser) {
+              await taskNotificationService.notifyTaskStatusChange(updatedTask, oldStatus, status, changedByUser);
+            }
+          } catch (emailError) {
+            console.error('Failed to send task status change emails:', emailError);
+          }
+        });
+      }
+
+      return updatedTask;
     } catch (error) {
       throw error;
+    }
+  }
+
+  // Update task assignments
+  static async updateAssignments(taskId, newAssignedUserIds, updatedByUserId) {
+    const client = await pool.connect();
+
+    try {
+      await client.query('BEGIN');
+
+      // Get existing task with current assignments
+      const existingTask = await Task.findById(taskId);
+      if (!existingTask) {
+        throw new Error('Task not found');
+      }
+
+      // Remove all current assignments
+      await client.query('DELETE FROM task_assigned_users WHERE task_id = $1', [taskId]);
+
+      // Add new assignments
+      if (newAssignedUserIds.length > 0) {
+        const assignQuery = `
+          INSERT INTO task_assigned_users (task_id, user_id)
+          VALUES ($1, $2)
+        `;
+
+        for (const userId of newAssignedUserIds) {
+          await client.query(assignQuery, [taskId, userId]);
+        }
+      }
+
+      await client.query('COMMIT');
+
+      // Get updated task
+      const updatedTask = await Task.findById(taskId);
+
+      // Send email notifications for assignment changes (async, don't block response)
+      setImmediate(async () => {
+        try {
+          const updatedByUser = await User.findById(updatedByUserId);
+          if (updatedByUser) {
+            await taskNotificationService.notifyTaskUpdateComplete(existingTask, updatedTask, updatedByUser);
+          }
+        } catch (emailError) {
+          console.error('Failed to send task assignment change emails:', emailError);
+        }
+      });
+
+      return updatedTask;
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
     }
   }
 

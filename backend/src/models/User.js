@@ -24,25 +24,26 @@ class User {
     this.roleName = this.role; // For backward compatibility
 
     this.status = userData.status;
+    this.isVerified = userData.is_verified || userData.isVerified || false;
     this.createdAt = userData.created_at || userData.createdAt;
     this.updatedAt = userData.updated_at || userData.updatedAt;
   }
 
   // Create a new user
   static async create(userData) {
-    const { username, email, password, firstName, middleName, lastName, roleId = 2 } = userData;
+    const { username, email, password, firstName, middleName, lastName, roleId = 2, isVerified = false } = userData;
 
     // Hash password
     const saltRounds = 12;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
     const query = `
-      INSERT INTO users (username, email, password_hash, first_name, middle_and_other_name, last_name, role_id, status)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-      RETURNING user_id, username, email, first_name, middle_and_other_name, last_name, role_id, status, created_at, updated_at
+      INSERT INTO users (username, email, password_hash, first_name, middle_and_other_name, last_name, role_id, status, is_verified)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      RETURNING user_id, username, email, first_name, middle_and_other_name, last_name, role_id, status, is_verified, created_at, updated_at
     `;
 
-    const values = [username, email, hashedPassword, firstName, middleName || '', lastName, roleId, 'active'];
+    const values = [username, email, hashedPassword, firstName, middleName || '', lastName, roleId, 'active', isVerified];
 
     try {
       const result = await pool.query(query, values);
@@ -56,7 +57,7 @@ class User {
   static async findById(id) {
     const query = `
       SELECT u.user_id, u.username, u.email, u.password_hash, u.first_name, u.middle_and_other_name, u.last_name,
-             u.role_id, r.role_name, u.status, u.created_at, u.updated_at
+             u.role_id, r.role_name, u.status, u.is_verified, u.created_at, u.updated_at
       FROM users u
       LEFT JOIN roles r ON u.role_id = r.role_id
       WHERE u.user_id = $1 AND u.status = 'active'
@@ -74,7 +75,7 @@ class User {
   static async findByEmail(email) {
     const query = `
       SELECT u.user_id, u.username, u.email, u.password_hash, u.first_name, u.middle_and_other_name, u.last_name,
-             u.role_id, r.role_name, u.status, u.created_at, u.updated_at
+             u.role_id, r.role_name, u.status, u.is_verified, u.created_at, u.updated_at
       FROM users u
       LEFT JOIN roles r ON u.role_id = r.role_id
       WHERE u.email = $1 AND u.status = 'active'
@@ -93,7 +94,7 @@ class User {
     const offset = (page - 1) * limit;
     let query = `
       SELECT u.user_id, u.username, u.email, u.first_name, u.middle_and_other_name, u.last_name,
-             u.role_id, r.role_name, u.status, u.created_at, u.updated_at
+             u.role_id, r.role_name, u.status, u.is_verified, u.created_at, u.updated_at
       FROM users u
       LEFT JOIN roles r ON u.role_id = r.role_id
       WHERE u.status = 'active'
@@ -211,7 +212,7 @@ class User {
   async updatePassword(newPassword) {
     const saltRounds = 12;
     const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
-    
+
     const query = `
       UPDATE users
       SET password_hash = $1, updated_at = NOW()
@@ -222,6 +223,78 @@ class User {
     try {
       const result = await pool.query(query, [hashedPassword, this.id]);
       return result.rows.length > 0;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // Verify user email
+  static async verifyEmail(userId) {
+    const query = `
+      UPDATE users
+      SET is_verified = true, updated_at = NOW()
+      WHERE user_id = $1 AND status = 'active'
+      RETURNING user_id, username, email, first_name, middle_and_other_name, last_name, role_id, status, is_verified, created_at, updated_at
+    `;
+
+    try {
+      const result = await pool.query(query, [userId]);
+      return result.rows.length > 0 ? new User(result.rows[0]) : null;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // Check if user is verified
+  static async isUserVerified(userId) {
+    const query = `
+      SELECT is_verified
+      FROM users
+      WHERE user_id = $1 AND status = 'active'
+    `;
+
+    try {
+      const result = await pool.query(query, [userId]);
+      return result.rows.length > 0 ? result.rows[0].is_verified : false;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // Find unverified users (for cleanup or admin purposes)
+  static async findUnverified(page = 1, limit = 10) {
+    const offset = (page - 1) * limit;
+    const query = `
+      SELECT u.user_id, u.username, u.email, u.first_name, u.middle_and_other_name, u.last_name,
+             u.role_id, r.role_name, u.status, u.is_verified, u.created_at, u.updated_at
+      FROM users u
+      LEFT JOIN roles r ON u.role_id = r.role_id
+      WHERE u.status = 'active' AND u.is_verified = false
+      ORDER BY u.created_at DESC
+      LIMIT $1 OFFSET $2
+    `;
+
+    try {
+      const result = await pool.query(query, [limit, offset]);
+      const users = result.rows.map(row => new User(row));
+
+      // Get total count
+      const countQuery = `
+        SELECT COUNT(*) FROM users
+        WHERE status = 'active' AND is_verified = false
+      `;
+      const countResult = await pool.query(countQuery);
+      const total = parseInt(countResult.rows[0].count);
+
+      return {
+        users,
+        pagination: {
+          page,
+          limit,
+          total,
+          pages: Math.ceil(total / limit)
+        }
+      };
     } catch (error) {
       throw error;
     }
@@ -238,8 +311,9 @@ class User {
       lastName: this.lastName,
       role: this.role,
       roleId: this.roleId,
-      roleName: this.roleName, 
+      roleName: this.roleName,
       status: this.status,
+      isVerified: this.isVerified,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt
     };
