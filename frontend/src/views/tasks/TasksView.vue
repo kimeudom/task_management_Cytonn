@@ -345,28 +345,30 @@ const filteredTasks = computed(() => {
   }
 
   // Status filter
-  if (filters.status) {
+  if (filters.status && filters.status !== 'all') {
     filtered = filtered.filter(task => task.status === filters.status)
   }
 
   // Priority filter
-  if (filters.priority) {
+  if (filters.priority && filters.priority !== 'all') {
     filtered = filtered.filter(task => task.priority === filters.priority)
   }
 
   // Assignment filter
-  if (filters.assignedTo === 'me') {
-    filtered = filtered.filter(task =>
-      task.assignedUsers?.includes(authStore.user?.id)
-    )
-  } else if (filters.assignedTo) {
-    filtered = filtered.filter(task =>
-      task.assignedUsers?.includes(parseInt(filters.assignedTo))
-    )
+  if (filters.assignedTo && filters.assignedTo !== 'all') {
+    if (filters.assignedTo === 'me') {
+      filtered = filtered.filter(task =>
+        task.assignedUsers?.some(u => u.id === authStore.user?.id)
+      )
+    } else {
+      filtered = filtered.filter(task =>
+        task.assignedUsers?.some(u => u.id === parseInt(filters.assignedTo))
+      )
+    }
   }
 
   // Due date filter
-  if (filters.dueDate) {
+  if (filters.dueDate && filters.dueDate !== 'all') {
     const now = new Date()
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
 
