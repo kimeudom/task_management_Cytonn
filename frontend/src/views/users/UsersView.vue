@@ -170,7 +170,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from 'vue-toastification'
@@ -310,23 +310,33 @@ const handleUserUpdated = (updatedUser) => {
 
 const fetchUsers = withErrorHandling(async () => {
   loading.value = true
-
   try {
-    // Use API service directly for better reliability
-    const response = await apiService.users.getAll()
-    users.value = response.data.data || response.data.users || response.data
+    const params = {
+      page: page.value,
+      limit: limit.value,
+      search: search.value,
+      role: filterRole.value,
+      status: filterStatus.value
+    }
+    const { users: userList, pagination: pag } = await userService.getUsers(params)
+    users.value = userList
+    total.value = pag.total
+    page.value = pag.page
+    limit.value = pag.limit
   } catch (error) {
     console.error('Failed to load users:', error)
     toast.error('Failed to load users')
-  }
-}, { context: 'Loading users' })
-
-// Lifecycle
-onMounted(async () => {
-  try {
-    await fetchUsers()
   } finally {
     loading.value = false
   }
+}, { context: 'Loading users' })
+
+// Watchers for filters and pagination
+watch([search, filterRole, filterStatus, page, limit], () => {
+  fetchUsers()
+})
+
+onMounted(() => {
+  fetchUsers()
 })
 </script>
