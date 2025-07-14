@@ -256,6 +256,12 @@ const searchQuery = ref('')
 const tasks = ref([])
 const availableUsers = ref([])
 
+// Pagination and filter state for fetchTasks
+const currentPage = ref(1)
+const pageSize = ref(20)
+const selectedStatus = ref('')
+const selectedPriority = ref('')
+
 const filters = reactive({
   status: '',
   priority: '',
