@@ -50,19 +50,6 @@
       <div class="register-link">
         <p>Don't have an account? <router-link to="/register">Register here</router-link></p>
       </div>
-
-      <!-- Test Credentials -->
-      <div class="test-credentials">
-        <h4>Test Credentials:</h4>
-        <div class="credential-item">
-          <strong>Admin:</strong> kimeudom02@gmail.com / pass1234
-          <button @click="fillCredentials('admin')" type="button">Use</button>
-        </div>
-        <div class="credential-item">
-          <strong>User:</strong> marynjeri@gmail.com / pass1234
-          <button @click="fillCredentials('user')" type="button">Use</button>
-        </div>
-      </div>
     </div>
   </div>
 </template>
@@ -110,23 +97,12 @@ export default {
       }
     };
 
-    const fillCredentials = (type) => {
-      if (type === 'admin') {
-        form.value.email = 'kimeudom02@gmail.com';
-        form.value.password = 'pass1234';
-      } else if (type === 'user') {
-        form.value.email = 'marynjeri@gmail.com';
-        form.value.password = 'pass1234';
-      }
-    };
-
     return {
       form,
       loading,
       error,
       isFormValid,
-      handleLogin,
-      fillCredentials
+      handleLogin
     };
   }
 };
