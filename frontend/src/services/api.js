@@ -154,7 +154,8 @@ export const apiService = {
       delete backendData.status // backend doesn't use status in update
       return api.patch(`/users/${id}`, backendData)
     },
-    delete: (id) => api.delete(`/users/${id}`)
+    delete: (id) => api.delete(`/users/${id}`),
+    isUsernameTaken: (username) => api.get(`/users/check-username`, { params: { username } })
   },
   
   // Tasks
