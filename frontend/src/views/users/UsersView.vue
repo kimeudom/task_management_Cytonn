@@ -22,141 +22,29 @@
           </BaseButton>
         </div>
       </div>
-      <!-- Filters -->
-      <div class="flex flex-wrap gap-2 mb-4">
-        <input
-          v-model="search"
-          placeholder="Search users..."
-          class="input input-bordered w-64"
-        />
-        <select v-model="filterRole" class="select select-bordered">
-          <option value="">All Roles</option>
-          <option value="admin">Admin</option>
-          <option value="manager">Manager</option>
-          <option value="user">User</option>
-        </select>
-        <select v-model="filterStatus" class="select select-bordered">
-          <option value="">All Status</option>
-          <option value="active">Active</option>
-          <option value="suspended">Suspended</option>
-          <option value="deleted">Deleted</option>
-        </select>
+
+      <!-- User Table Card -->
+      <div class="card">
+        <div class="card-header">
+          <h3 class="text-lg font-medium text-gray-900 dark:text-white">
+            Users
+          </h3>
+        </div>
+        <div class="card-body">
+          <UserTable
+            :users="users"
+            :loading="loading"
+            :pagination="{ page: page, pages: pages, limit: limit, total: total }"
+            :filters="{ search: search, role: filterRole, status: filterStatus }"
+            @edit-user="editUser"
+            @delete-user="deleteUser"
+            @view-user="viewUser"
+            @change-page="(p) => { page = p }"
+            @change-filters="onTableFiltersChange"
+            @create-user="openCreateModal"
+          />
+        </div>
       </div>
-      <!-- Users List -->
-      <BaseCard>
-        <template #body>
-          <div v-if="loading" class="flex justify-center py-8">
-            <LoadingSpinner size="lg" text="Loading users..." />
-          </div>
-          <div v-else-if="filteredUsers.length === 0" class="text-center py-8">
-            <UsersIcon class="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <p class="text-gray-500 dark:text-gray-400">No users found</p>
-          </div>
-          <div v-else class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-              <thead class="bg-gray-50 dark:bg-gray-800">
-                <tr>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    User
-                  </th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Role
-                  </th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Created
-                  </th>
-                  <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
-                <tr
-                  v-for="user in filteredUsers"
-                  :key="user.id"
-                  class="hover:bg-gray-50 dark:hover:bg-gray-800"
-                >
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    <div class="flex items-center">
-                      <div class="flex-shrink-0 h-10 w-10">
-                        <div class="h-10 w-10 bg-blue-600 rounded-full flex items-center justify-center">
-                          <span class="text-sm font-medium text-white">
-                            {{ getUserInitials(user) }}
-                          </span>
-                        </div>
-                      </div>
-                      <div class="ml-4">
-                        <div class="text-sm font-medium text-gray-900 dark:text-white">
-                          {{ user.firstName }} {{ user.lastName }}
-                        </div>
-                        <div class="text-sm text-gray-500 dark:text-gray-400">
-                          {{ user.email }}
-                        </div>
-                      </div>
-                    </div>
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    <BaseBadge
-                      :variant="getRoleBadgeVariant(user.role)"
-                    >
-                      {{ user.role }}
-                    </BaseBadge>
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    <BaseBadge
-                      :variant="getStatusBadgeVariant(user.status)"
-                    >
-                      {{ user.status }}
-                    </BaseBadge>
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                    {{ formatDate(user.createdAt) }}
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <div class="flex items-center justify-end space-x-2">
-                      <button
-                        v-permission="'users.view'"
-                        @click="viewUser(user)"
-                        class="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                        title="View user"
-                      >
-                        <EyeIcon class="h-5 w-5" />
-                      </button>
-                      <button
-                        v-permission="'users.edit'"
-                        @click="editUser(user)"
-                        class="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                        title="Edit user"
-                      >
-                        <PencilIcon class="h-5 w-5" />
-                      </button>
-                      <button
-                        v-permission="'users.delete'"
-                        v-if="user.id !== authStore.user?.id"
-                        @click="deleteUser(user)"
-                        class="p-2 text-gray-400 hover:text-red-600"
-                        title="Delete user"
-                      >
-                        <TrashIcon class="h-5 w-5" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-            <!-- Pagination -->
-            <BasePagination
-              v-if="pages > 1"
-              :page="page"
-              :pages="pages"
-              @change-page="(p) => { page = p }"
-            />
-          </div>
-        </template>
-      </BaseCard>
     </div>
 
     <!-- User Modal -->
@@ -174,7 +62,6 @@ import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from 'vue-toastification'
-import { format } from 'date-fns'
 import {
   PlusIcon,
   UsersIcon,
@@ -184,6 +71,7 @@ import {
 } from '@heroicons/vue/24/outline'
 import { BaseCard, BaseButton, BaseBadge, LoadingSpinner } from '@/components/ui'
 import UserModal from '@/components/users/UserModal.vue'
+import UserTable from '@/components/users/UserTable.vue'
 import { apiService } from '@/services/api'
 import { usePermissions } from '@/utils/permissions'
 import userService from '@/services/users'
@@ -330,6 +218,13 @@ const fetchUsers = withErrorHandling(async () => {
     loading.value = false
   }
 }, { context: 'Loading users' })
+
+function onTableFiltersChange(newFilters) {
+  search.value = newFilters.search || ''
+  filterRole.value = newFilters.role || ''
+  filterStatus.value = newFilters.status || ''
+  page.value = 1
+}
 
 // Watchers for filters and pagination
 watch([search, filterRole, filterStatus, page, limit], () => {
