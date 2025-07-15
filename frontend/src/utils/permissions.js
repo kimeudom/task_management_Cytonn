@@ -151,6 +151,20 @@ export function canAccessResource(resource, action, user = null) {
 }
 
 /**
+ * Helper function to check if user is assigned to a task
+ * @param {Object} task - Task object
+ * @param {number} userId - User ID
+ * @returns {boolean} Whether user is assigned to task
+ */
+function isUserAssignedToTask(task, userId) {
+  if (!task || !task.assignedUsers || !userId) {
+    return false
+  }
+  // Standardize to check against an array of user objects
+  return task.assignedUsers.some(user => user && user.id === userId)
+}
+
+/**
  * Check if user can perform action on specific task
  * @param {Object} task - Task object
  * @param {string} action - Action to perform
@@ -160,36 +174,53 @@ export function canAccessResource(resource, action, user = null) {
 export function canPerformTaskAction(task, action, user = null) {
   const authStore = useAuthStore()
   const currentUser = user || authStore.user
-  
-  if (!currentUser) {
+
+  if (!currentUser || !task) {
     return false
   }
-  
+
   const userRole = currentUser.role.toLowerCase()
   const userId = currentUser.id
-  
+
   // Admin can do everything
   if (userRole === 'admin') {
     return true
   }
-  
-  // Manager can manage tasks they created or are assigned to
+
+  const isOwner = task.createdBy === userId
+  const isAssigned = isUserAssignedToTask(task, userId)
+
+  // Manager permissions
   if (userRole === 'manager') {
-    if (['create', 'read', 'update', 'delete', 'assign'].includes(action)) {
-      return true
+    switch (action) {
+      case 'create':
+      case 'read':
+      case 'assign':
+        return true
+      case 'update':
+      case 'delete':
+        // Managers can update/delete tasks they created or are assigned to
+        return isOwner || isAssigned
+      default:
+        return false
     }
   }
-  
-  // Users can only update status of tasks assigned to them
+
+  // User permissions
   if (userRole === 'user') {
-    if (action === 'read') {
-      return task.assignedUsers?.includes(userId) || task.createdBy === userId
-    }
-    if (action === 'update_status') {
-      return task.assignedUsers?.includes(userId)
+    switch (action) {
+      case 'read':
+        // Users can read tasks they created or are assigned to
+        return isOwner || isAssigned
+      case 'update_status':
+      case 'comment':
+        // Users can update status or comment on tasks assigned to them
+        return isAssigned
+      default:
+        return false
     }
   }
-  
+
   return false
 }
 
@@ -282,6 +313,33 @@ export function withPermissionCheck(permission, apiCall, user = null) {
 }
 
 /**
+ * Enhanced permission checking with debugging
+ * @param {Object} task - Task object
+ * @param {string} action - Action to perform
+ * @param {Object} user - User object (optional)
+ * @returns {boolean} Whether user can perform action
+ */
+export function canPerformTaskActionDebug(task, action, user = null) {
+  const authStore = useAuthStore()
+  const currentUser = user || authStore.user
+  
+  console.log('Permission check:', {
+    task: task?.id,
+    action,
+    user: currentUser?.id,
+    userRole: currentUser?.role,
+    taskCreatedBy: task?.createdBy,
+    taskAssignedUsers: task?.assignedUsers,
+    taskAssignedTo: task?.assignedTo
+  })
+  
+  const result = canPerformTaskAction(task, action, currentUser)
+  console.log('Permission result:', result)
+  
+  return result
+}
+
+/**
  * Vue composable for permissions
  * @returns {Object} Permission utilities
  */
@@ -295,6 +353,7 @@ export function usePermissions() {
     hasRoleLevel: (role) => hasRoleLevel(role, authStore.user),
     canAccessResource: (resource, action) => canAccessResource(resource, action, authStore.user),
     canPerformTaskAction: (task, action) => canPerformTaskAction(task, action, authStore.user),
+    canPerformTaskActionDebug: (task, action) => canPerformTaskActionDebug(task, action, authStore.user),
     canViewComponent: (permissions) => canViewComponent(permissions, authStore.user),
     getUserPermissions: () => getUserPermissions(authStore.user),
     isAdmin: () => authStore.isAdmin,

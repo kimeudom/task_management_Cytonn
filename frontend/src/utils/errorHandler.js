@@ -220,9 +220,20 @@ export function handleError(error, options = {}) {
         }
         break
 
-      case ERROR_TYPES.AUTHORIZATION:
-        toast.warning(message)
+      case ERROR_TYPES.AUTHORIZATION: {
+        const authStore = useAuthStore()
+        const userRole = authStore.userRole?.toLowerCase()
+
+        // As per request, suppress permission errors for non-admin users
+        // The root cause is that the UI shows elements they can't access
+        if (userRole === 'manager' || userRole === 'user') {
+          // Suppress the toast notification
+        } else {
+          // For admins or other roles, still show the warning
+          toast.warning(message)
+        }
         break
+      }
 
       case ERROR_TYPES.VALIDATION:
         toast.warning(message)

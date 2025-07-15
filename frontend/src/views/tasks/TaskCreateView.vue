@@ -1,7 +1,6 @@
 <template>
   <div class="min-h-screen bg-gray-50 dark:bg-gray-900">
     <div class="px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
-      <!-- Mobile-friendly Header -->
       <div class="mb-6 lg:mb-8">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div class="min-w-0 flex-1">
@@ -24,12 +23,9 @@
         </div>
       </div>
 
-      <!-- Responsive Form Container -->
       <div class="max-w-4xl mx-auto">
         <BaseCard>
-          <template #body>
-            <form @submit.prevent="createTask" class="space-y-6">
-              <!-- Task Title - Full Width -->
+          <form @submit.prevent="createTask" class="space-y-6">
               <div>
                 <label class="form-label required">Task Title</label>
                 <input
@@ -47,7 +43,6 @@
                 </div>
               </div>
 
-              <!-- Description - Full Width -->
               <div>
                 <label class="form-label">Description</label>
                 <textarea
@@ -64,21 +59,20 @@
                 </div>
               </div>
 
-              <!-- Priority and Deadline - Responsive Grid -->
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                 <div>
                   <label class="form-label required">Priority</label>
-                  <select 
-                    v-model="form.priority" 
+                  <select
+                    v-model="form.priority"
                     class="form-input"
                     :class="{ 'border-red-500': errors.priority }"
                     required
                   >
                     <option value="">Select Priority</option>
-                    <option value="low">🟢 Low</option>
-                    <option value="medium">🟡 Medium</option>
-                    <option value="high">🟠 High</option>
-                    <option value="urgent">🔴 Urgent</option>
+                    <option value="low">泙 Low</option>
+                    <option value="medium">泯 Medium</option>
+                    <option value="high">泛 High</option>
+                    <option value="urgent">閥 Urgent</option>
                   </select>
                   <div v-if="errors.priority" class="form-error">{{ errors.priority }}</div>
                 </div>
@@ -96,16 +90,13 @@
                 </div>
               </div>
 
-              <!-- Assignment Section -->
               <div>
                 <label class="form-label">Assign To</label>
                 
-                <!-- Loading State -->
-              <div v-if="loading" class="flex justify-center py-12">
+                <div v-if="loading" class="flex justify-center py-12">
                 <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
               </div>
 
-                <!-- Search Bar for Users (Mobile Friendly) -->
                 <div v-else-if="availableUsers.length > 0" class="space-y-4">
                   <div class="relative">
                     <input
@@ -121,7 +112,6 @@
                     </div>
                   </div>
 
-                  <!-- Selected Users Summary -->
                   <div v-if="form.assignedUsers.length > 0" class="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
                     <div class="text-sm font-medium text-blue-900 dark:text-blue-100 mb-2">
                       Selected Users ({{ form.assignedUsers.length }})
@@ -145,7 +135,6 @@
                     </div>
                   </div>
 
-                  <!-- User Selection List -->
                   <div class="max-h-64 overflow-y-auto border rounded-lg divide-y divide-gray-200 dark:divide-gray-700">
                     <div
                       v-for="user in filteredUsers"
@@ -184,13 +173,11 @@
                     </div>
                   </div>
 
-                  <!-- No Users Found -->
                   <div v-if="filteredUsers.length === 0 && userSearch" class="text-center py-6 text-gray-500">
                     No users found matching "{{ userSearch }}"
                   </div>
                 </div>
 
-                <!-- No Users Available -->
                 <div v-else-if="!loadingUsers && availableUsers.length === 0" class="text-center py-8 text-gray-500">
                   <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
@@ -201,7 +188,6 @@
                 <div v-if="errors.assignedUsers" class="form-error">{{ errors.assignedUsers }}</div>
               </div>
 
-              <!-- Form Actions - Mobile Responsive -->
               <div class="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-3 sm:gap-4 pt-6 border-t border-gray-200 dark:border-gray-700">
                 <button
                   type="button"
@@ -224,7 +210,6 @@
                 </button>
               </div>
             </form>
-          </template>
         </BaseCard>
       </div>
     </div>
@@ -246,8 +231,11 @@ const router = useRouter()
 const toast = useToast()
 const { hasPermission } = usePermissions()
 
+console.log('TaskCreateView: Component loaded. Checking permission (tasks.create):', hasPermission('tasks.create')); // Debug Log
+
 // Check permission on component load
 if (!hasPermission('tasks.create')) {
+  console.warn('TaskCreateView: User does not have tasks.create permission. Redirecting to /unauthorized.') // Debug Log
   router.push('/unauthorized')
 }
 

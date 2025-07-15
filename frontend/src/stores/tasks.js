@@ -110,12 +110,14 @@ export const useTasksStore = defineStore('tasks', {
     async fetchTasks(params = {}) {
       this.loading = true
       this.error = null
+      // Clear existing tasks to prevent displaying stale data
+      this.tasks = []
+      this.totalTasks = 0
 
       try {
-        const response = await apiService.tasks.getAll(params)
-        const rawTasks = extractResponseData(response) || response.data.tasks || response.data
-        this.tasks = Array.isArray(rawTasks) ? rawTasks.map(transformTaskFromBackend) : []
-        this.totalTasks = this.tasks.length
+        const response = await taskService.getTasks(params)
+        this.tasks = response.tasks
+        this.totalTasks = response.pagination.total
         return this.tasks
       } catch (error) {
         this.error = error.message

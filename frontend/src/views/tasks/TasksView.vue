@@ -1,7 +1,6 @@
 <template>
   <div class="min-h-screen bg-gray-50 dark:bg-gray-900">
     <div class="px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
-      <!-- Header -->
       <div class="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0 mb-6 sm:mb-8">
         <div class="flex-1 min-w-0">
           <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white truncate">
@@ -13,7 +12,7 @@
         </div>
         <div class="flex items-center space-x-2 sm:space-x-3 flex-shrink-0">
           <button
-            v-permission="'tasks.create'"
+            v-if="authStore.isManagerOrAdmin"
             @click="createTask"
             class="btn-primary flex-1 sm:flex-none"
           >
@@ -22,7 +21,6 @@
             <span class="sm:hidden">Create</span>
           </button>
 
-          <!-- View toggle -->
           <div class="hidden sm:flex items-center bg-white dark:bg-gray-800 rounded-lg p-1 border border-gray-200 dark:border-gray-700">
             <button
               @click="viewMode = 'list'"
@@ -50,7 +48,6 @@
         </div>
       </div>
 
-      <!-- Mobile View Toggle -->
       <div class="sm:hidden mb-4">
         <div class="flex items-center bg-white dark:bg-gray-800 rounded-lg p-1 border border-gray-200 dark:border-gray-700">
           <button
@@ -78,10 +75,8 @@
         </div>
       </div>
 
-      <!-- Filters and Search -->
       <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 mb-6">
         <div class="p-4 sm:p-6">
-          <!-- Search Bar -->
           <div class="mb-4 sm:mb-6">
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Search Tasks
@@ -97,7 +92,6 @@
             </div>
           </div>
 
-          <!-- Filters -->
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4 mb-4 sm:mb-6">
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -162,7 +156,6 @@
             </div>
           </div>
 
-          <!-- Quick Filters -->
           <div class="flex flex-wrap gap-2">
             <button
               v-for="quickFilter in quickFilters"
@@ -181,7 +174,6 @@
         </div>
       </div>
 
-      <!-- Tasks List -->
       <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
         <div class="p-4 sm:p-6">
           <div v-if="loading" class="flex justify-center py-12">
@@ -193,7 +185,6 @@
             <p class="text-gray-400 dark:text-gray-500 text-sm mt-2">Try adjusting your filters or create a new task</p>
           </div>
           <div v-else>
-            <!-- View Mode: Cards -->
             <div v-if="viewMode === 'cards'" class="space-y-4">
               <div
                 v-for="task in filteredTasks"
@@ -234,15 +225,15 @@
                     >
                       <EyeIcon class="h-4 w-4 sm:h-5 sm:w-5" />
                     </button>
-                   <button
-                      v-if="canEditTask(task)"
-                      @click="handleTaskNavigation(task, 'edit')"
-                      :disabled="loading"
-                      class="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-md transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                      title="Edit task"
+                    <button
+                        v-if="canEditTask(task)"
+                        @click="handleTaskNavigation(task, 'edit')"
+                        :disabled="loading"
+                        class="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-md transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Edit task"
                     >
-                      <PencilIcon class="h-4 w-4" />
-                      </button>
+                        <PencilIcon class="h-4 w-4" />
+                    </button>
                     <button
                       v-if="canDeleteTask(task)"
                       @click="deleteTask(task)"
@@ -256,9 +247,7 @@
               </div>
             </div>
 
-            <!-- View Mode: List -->
             <div v-else class="overflow-hidden">
-              <!-- Mobile List View -->
               <div class="sm:hidden space-y-3">
                 <div
                   v-for="task in filteredTasks"
@@ -315,7 +304,6 @@
                 </div>
               </div>
 
-              <!-- Desktop Table View -->
               <div class="hidden sm:block overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                   <thead class="bg-gray-50 dark:bg-gray-700">
@@ -403,7 +391,6 @@
               </div>
             </div>
 
-            <!-- Pagination -->
             <div v-if="totalTasks > pageSize" class="flex justify-center sm:justify-end mt-6">
               <nav class="flex items-center justify-between w-full sm:w-auto">
                 <div class="flex items-center space-x-2">
@@ -432,9 +419,7 @@
       </div>
     </div>
 
-    <!-- Create Task Modal -->
-    <!-- TODO: Implement create task modal -->
-  </div>
+    </div>
 </template>
 
 <script setup>
@@ -577,16 +562,15 @@ const changePage = (page) => {
   fetchTasks()
 }
 
-const refreshTasks = withErrorHandling(async () => {
-  await fetchTasks()
-}, { context: 'Refreshing tasks' })
 
-watch(() => route.name, (newName, oldName) => {
-  // If we're coming back to tasks view from task-edit or task-view
-  if (newName === 'tasks' && (oldName === 'task-edit' || oldName === 'task-view')) {
-    refreshTasks()
+watch(
+  () => route.name,
+  (newName) => {
+    if (newName === 'tasks') {
+      fetchTasks()
+    }
   }
-})
+)
 
 const getStatusBadgeClass = (status) => {
   switch (status?.toLowerCase()) {
@@ -639,6 +623,7 @@ const isQuickFilterActive = (quickFilter) => {
 }
 
 const createTask = () => {
+  console.log('TasksView: Attempting to create task. Has permission (tasks.create):', hasPermission('tasks.create')); // Debug Log
   if (!hasPermission('tasks.create')) {
     toast.warning('You do not have permission to create tasks')
     return
@@ -647,12 +632,13 @@ const createTask = () => {
 }
 
 const canEditTask = (task) => {
-  if (!task || !authStore.user) return false
-  
+  if (!task || !authStore.user) {
+    return false
+  }
   try {
-    return canPerformTaskAction(task, 'update', authStore.user)
-  } catch (error) {
-    console.warn('Error checking edit permissions:', error)
+    return canPerformTaskAction(task, 'update')
+  } catch (e) {
+    console.error('Error in canEditTask:', e)
     return false
   }
 }
@@ -670,29 +656,45 @@ const loadUsers = withErrorHandling(async () => {
   }
 }, { context: 'Loading users', showToast: false })
 
-const viewTask = (task) => {
-  router.push(`/tasks/${task.id}`)
+const viewTask = async (task) => {
+  if (!task || !task.id) {
+    toast.error('Invalid task data')
+    return
+  }
+
+  try {
+    await router.push(`/tasks/${task.id}`)
+  } catch (error) {
+    console.error('Navigation error:', error)
+    toast.error('Failed to navigate to task view')
+  }
 }
 
-const editTask = (task) => {
+const editTask = async (task) => {
+  if (!task || !task.id) {
+    toast.error('Invalid task data')
+    return
+  }
+
   // Double-check permissions with fresh data
   if (!canEditTask(task)) {
     toast.warning('You do not have permission to edit this task')
     return
   }
   
-  // Navigate to edit page
-  router.push({ 
-    name: 'task-edit', 
-    params: { id: task.id }
-  })
+  try {
+    // Navigate to edit page
+    await router.push({ 
+      name: 'task-edit', 
+      params: { id: task.id }
+    })
+  } catch (error) {
+    console.error('Navigation error:', error)
+    toast.error('Failed to navigate to edit page')
+  }
 }
 
-watch(() => route.name, (newName, oldName) => {
-  if (newName === 'tasks' && (oldName === 'task-edit' || oldName === 'task-view')) {
-    fetchTasks()
-  }
-})
+
 
 const handleTaskNavigation = (task, action) => {
   if (!task || !task.id) {
@@ -713,6 +715,11 @@ const handleTaskNavigation = (task, action) => {
 }
 
 const deleteTask = withErrorHandling(async (task) => {
+  if (!task || !task.id) {
+    toast.error('Invalid task data')
+    return
+  }
+
   if (!canDeleteTask(task)) {
     toast.warning('You do not have permission to delete this task')
     return
@@ -723,6 +730,7 @@ const deleteTask = withErrorHandling(async (task) => {
 
     // Remove from local list
     tasks.value = tasks.value.filter(t => t.id !== task.id)
+    totalTasks.value = Math.max(0, totalTasks.value - 1)
 
     toast.success('Task deleted successfully')
   }
@@ -739,32 +747,37 @@ const safeCanEditTask = (task) => {
 
 const fetchTasks = withErrorHandling(async () => {
   loading.value = true
-
+  tasksStore.clearError()
   try {
-    // Clear previous tasks to avoid stale data
-    tasks.value = []
-    
-    await tasksStore.loadTasks({
+    // Determine task scope based on user role
+    const params = {
       page: currentPage.value,
       limit: pageSize.value,
-      status: selectedStatus.value,
-      priority: selectedPriority.value,
-      search: searchQuery.value
-    })
-    
-    tasks.value = tasksStore.tasks
-    totalTasks.value = tasksStore.totalTasks
-    
-    // Force reactivity update
-    await nextTick()
+      status: filters.status,
+      priority: filters.priority,
+      search: searchQuery.value,
+    };
+
+    if (authStore.isManagerOrAdmin) {
+      // Managers and Admins can see all tasks, but can filter by user
+      if (filters.assignedTo) {
+        params.assignedTo = filters.assignedTo;
+      }
+    } else {
+      // Regular users only see their own tasks
+      params.assignedTo = authStore.user?.id;
+    }
+
+    await tasksStore.fetchTasks(params);
+    tasks.value = tasksStore.tasks;
+    totalTasks.value = tasksStore.totalTasks;
   } catch (error) {
-    console.error('Failed to load tasks:', error)
-    toast.error('Failed to load tasks')
-    tasks.value = []
+    toast.error(error.message || 'Failed to fetch tasks.');
   } finally {
-    loading.value = false
+    loading.value = false;
   }
-}, { context: 'Loading tasks' })
+}, { context: 'Fetching Tasks' });
+
 
 const updateTaskInList = (updatedTask) => {
   const index = tasks.value.findIndex(t => t.id === updatedTask.id)
@@ -779,7 +792,6 @@ watch(() => tasksStore.tasks, (newTasks) => {
     tasks.value = newTasks
   }
 }, { deep: true })
-
 const preloadEditRoute = () => {
   // Preload the edit route component for faster navigation
   router.prefetch({ name: 'task-edit' })
@@ -790,15 +802,13 @@ onMounted(async () => {
   try {
     await Promise.all([
       fetchTasks(),
-      loadUsers(),
-      preloadEditRoute()
+      loadUsers()
     ])
   } catch (error) {
     console.error('Error during component initialization:', error)
     toast.error('Failed to load tasks data')
   }
 })
-
 import { onBeforeRouteLeave } from 'vue-router'
 
 onBeforeRouteLeave((to, from, next) => {
@@ -806,6 +816,20 @@ onBeforeRouteLeave((to, from, next) => {
   loading.value = false
   next()
 })
+
+const debugTaskPermissions = (task) => {
+  console.log('Task permissions debug:', {
+    task: task.id,
+    canEdit: canEditTask(task),
+    canDelete: canDeleteTask(task),
+    user: authStore.user?.id,
+    userRole: authStore.user?.role
+  })
+  
+  // Use the debug version of permission check
+  canPerformTaskActionDebug(task, 'update')
+  canPerformTaskActionDebug(task, 'delete')
+}
 
 </script>
 

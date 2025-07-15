@@ -9,7 +9,7 @@ import { apiService } from '@/services/api'
 /**
  * Debug current authentication state
  */
-export const debugAuthState = () => {
+export const debugAuthState = async () => {
   console.log('🔍 Authentication Debug Info:')
   console.log('================================')
   
