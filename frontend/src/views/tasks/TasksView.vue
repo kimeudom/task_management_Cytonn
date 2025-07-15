@@ -234,14 +234,15 @@
                     >
                       <EyeIcon class="h-4 w-4 sm:h-5 sm:w-5" />
                     </button>
-                    <button
+                   <button
                       v-if="canEditTask(task)"
-                      @click="editTask(task)"
-                      class="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors duration-200"
+                      @click="handleTaskNavigation(task, 'edit')"
+                      :disabled="loading"
+                      class="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-md transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                       title="Edit task"
                     >
-                      <PencilIcon class="h-4 w-4 sm:h-5 sm:w-5" />
-                    </button>
+                      <PencilIcon class="h-4 w-4" />
+                      </button>
                     <button
                       v-if="canDeleteTask(task)"
                       @click="deleteTask(task)"
@@ -437,8 +438,8 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, reactive, computed, onMounted, watch, nextTick } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useToast } from 'vue-toastification'
 import { useAuthStore } from '@/stores/auth'
 import { format } from 'date-fns'
@@ -460,6 +461,7 @@ import { withErrorHandling } from '@/utils/errorHandler'
 // Composables
 const router = useRouter()
 const toast = useToast()
+const route = useRoute()
 const authStore = useAuthStore()
 const tasksStore = useTasksStore()
 const { hasPermission, canPerformTaskAction } = usePermissions()
@@ -575,6 +577,17 @@ const changePage = (page) => {
   fetchTasks()
 }
 
+const refreshTasks = withErrorHandling(async () => {
+  await fetchTasks()
+}, { context: 'Refreshing tasks' })
+
+watch(() => route.name, (newName, oldName) => {
+  // If we're coming back to tasks view from task-edit or task-view
+  if (newName === 'tasks' && (oldName === 'task-edit' || oldName === 'task-view')) {
+    refreshTasks()
+  }
+})
+
 const getStatusBadgeClass = (status) => {
   switch (status?.toLowerCase()) {
     case 'completed':
@@ -634,7 +647,14 @@ const createTask = () => {
 }
 
 const canEditTask = (task) => {
-  return canPerformTaskAction(task, 'update', authStore.user)
+  if (!task || !authStore.user) return false
+  
+  try {
+    return canPerformTaskAction(task, 'update', authStore.user)
+  } catch (error) {
+    console.warn('Error checking edit permissions:', error)
+    return false
+  }
 }
 
 const canDeleteTask = (task) => {
@@ -655,11 +675,42 @@ const viewTask = (task) => {
 }
 
 const editTask = (task) => {
+  // Double-check permissions with fresh data
   if (!canEditTask(task)) {
     toast.warning('You do not have permission to edit this task')
     return
   }
-  router.push({ name: 'task-edit', params: { id: task.id } })
+  
+  // Navigate to edit page
+  router.push({ 
+    name: 'task-edit', 
+    params: { id: task.id }
+  })
+}
+
+const route = useRoute()
+watch(() => route.name, (newName, oldName) => {
+  if (newName === 'tasks' && (oldName === 'task-edit' || oldName === 'task-view')) {
+    fetchTasks()
+  }
+})
+
+const handleTaskNavigation = (task, action) => {
+  if (!task || !task.id) {
+    toast.error('Invalid task data')
+    return
+  }
+  
+  switch (action) {
+    case 'view':
+      router.push(`/tasks/${task.id}`)
+      break
+    case 'edit':
+      editTask(task)
+      break
+    default:
+      console.warn('Unknown navigation action:', action)
+  }
 }
 
 const deleteTask = withErrorHandling(async (task) => {
@@ -678,11 +729,22 @@ const deleteTask = withErrorHandling(async (task) => {
   }
 }, { context: 'Deleting task' })
 
+const safeCanEditTask = (task) => {
+  try {
+    return canEditTask(task)
+  } catch (error) {
+    console.error('Permission check failed:', error)
+    return false
+  }
+}
+
 const fetchTasks = withErrorHandling(async () => {
   loading.value = true
 
   try {
-    // Use the tasks store to load tasks
+    // Clear previous tasks to avoid stale data
+    tasks.value = []
+    
     await tasksStore.loadTasks({
       page: currentPage.value,
       limit: pageSize.value,
@@ -690,23 +752,62 @@ const fetchTasks = withErrorHandling(async () => {
       priority: selectedPriority.value,
       search: searchQuery.value
     })
+    
     tasks.value = tasksStore.tasks
     totalTasks.value = tasksStore.totalTasks
+    
+    // Force reactivity update
+    await nextTick()
   } catch (error) {
     console.error('Failed to load tasks:', error)
     toast.error('Failed to load tasks')
+    tasks.value = []
   } finally {
     loading.value = false
   }
 }, { context: 'Loading tasks' })
 
+const updateTaskInList = (updatedTask) => {
+  const index = tasks.value.findIndex(t => t.id === updatedTask.id)
+  if (index !== -1) {
+    tasks.value[index] = { ...tasks.value[index], ...updatedTask }
+  }
+}
+
+// Listen for task updates from the store
+watch(() => tasksStore.tasks, (newTasks) => {
+  if (newTasks && newTasks.length > 0) {
+    tasks.value = newTasks
+  }
+}, { deep: true })
+
+const preloadEditRoute = () => {
+  // Preload the edit route component for faster navigation
+  router.prefetch({ name: 'task-edit' })
+}
+
 // Lifecycle
 onMounted(async () => {
-  await Promise.all([
-    fetchTasks(),
-    loadUsers()
-  ])
+  try {
+    await Promise.all([
+      fetchTasks(),
+      loadUsers(),
+      preloadEditRoute()
+    ])
+  } catch (error) {
+    console.error('Error during component initialization:', error)
+    toast.error('Failed to load tasks data')
+  }
 })
+
+import { onBeforeRouteLeave } from 'vue-router'
+
+onBeforeRouteLeave((to, from, next) => {
+  // Clean up any pending operations
+  loading.value = false
+  next()
+})
+
 </script>
 
 <style scoped>
