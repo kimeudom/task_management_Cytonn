@@ -688,7 +688,6 @@ const editTask = (task) => {
   })
 }
 
-const route = useRoute()
 watch(() => route.name, (newName, oldName) => {
   if (newName === 'tasks' && (oldName === 'task-edit' || oldName === 'task-view')) {
     fetchTasks()
