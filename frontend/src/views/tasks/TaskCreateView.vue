@@ -69,10 +69,10 @@
                     required
                   >
                     <option value="">Select Priority</option>
-                    <option value="low">泙 Low</option>
-                    <option value="medium">泯 Medium</option>
-                    <option value="high">泛 High</option>
-                    <option value="urgent">閥 Urgent</option>
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                    <option value="urgent">Urgent</option>
                   </select>
                   <div v-if="errors.priority" class="form-error">{{ errors.priority }}</div>
                 </div>
@@ -296,7 +296,7 @@ const getUserInitials = (user) => {
 }
 
 const getUserById = (id) => {
-  return availableUsers.value.find(user => user.id === id)
+  return availableUsers.value.find(user => user.id == id)
 }
 
 const toggleUser = (userId) => {
