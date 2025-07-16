@@ -19,25 +19,53 @@
       <form v-else @submit.prevent="updateTask" class="space-y-6 bg-white dark:bg-gray-800 p-8 rounded-lg shadow-md">
         <div>
           <label for="title" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Title</label>
-          <input type="text" id="title" v-model="task.title" required class="mt-1 block w-full form-input" />
+          <input
+            type="text"
+            id="title"
+            v-model="task.title"
+            required
+            class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
+            placeholder="Enter task title..."
+          />
         </div>
         <div>
           <label for="description" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Description</label>
-          <textarea id="description" v-model="task.description" rows="4" class="mt-1 block w-full form-textarea"></textarea>
+          <textarea
+            id="description"
+            v-model="task.description"
+            rows="4"
+            class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
+            placeholder="Enter task description..."
+          ></textarea>
         </div>
         <div>
           <label for="priority" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Priority</label>
-          <select id="priority" v-model="task.priority" class="mt-1 block w-full form-select">
+          <select
+            id="priority"
+            v-model="task.priority"
+            class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+          >
             <option v-for="p in priorities" :key="p" :value="p">{{ getPriorityLabel(p) }}</option>
           </select>
         </div>
         <div>
           <label for="deadline" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Deadline</label>
-          <input type="datetime-local" id="deadline" v-model="task.deadline" class="mt-1 block w-full form-input" />
+          <input
+            type="datetime-local"
+            id="deadline"
+            v-model="task.deadline"
+            class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+          />
         </div>
         <div>
           <label for="assignedUsers" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Assign Users</label>
-          <select id="assignedUsers" v-model="task.assignedUsers" multiple class="mt-1 block w-full form-multiselect">
+          <select
+            id="assignedUsers"
+            v-model="task.assignedUsers"
+            multiple
+            class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+            size="5"
+          >
             <option v-for="user in availableUsers" :key="user.id" :value="user.id">
               {{ getUserDisplayName(user) }}
             </option>
@@ -47,8 +75,18 @@
           </div>
         </div>
         <div class="flex justify-end space-x-4">
-          <button type="button" @click="goBack" class="btn-outline">Cancel</button>
-          <button type="submit" class="btn-primary" :disabled="isSubmitting">
+          <button
+            type="button"
+            @click="goBack"
+            class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-md font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            :disabled="isSubmitting"
+          >
             {{ isSubmitting ? 'Updating...' : 'Update Task' }}
           </button>
         </div>

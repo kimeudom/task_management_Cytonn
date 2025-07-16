@@ -179,7 +179,7 @@ export const apiService = {
         title: taskData.title,
         description: taskData.description || '',
         priority: priorityMap[taskData.priority] || parseInt(taskData.priority) || 2, // Default to medium
-        deadline: taskData.deadline || taskData.dueDate,
+        deadline: taskData.deadline || taskData.dueDate, // Backend expects 'deadline' for create
         assignedUsers: taskData.assignedUsers || (taskData.assignedTo ? [taskData.assignedTo] : [])
       }
 
@@ -201,7 +201,7 @@ export const apiService = {
         description: taskData.description,
         priority: taskData.priority ? (priorityMap[taskData.priority] || parseInt(taskData.priority)) : undefined,
         status: taskData.status,
-        deadline: taskData.deadline || taskData.dueDate,
+        deadline: taskData.deadline || taskData.dueDate, // Backend expects 'deadline'
         assignedUsers: taskData.assignedUsers || (taskData.assignedTo ? [taskData.assignedTo] : undefined)
       }
 
