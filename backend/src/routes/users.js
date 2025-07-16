@@ -6,7 +6,7 @@
 import express from 'express';
 import Joi from 'joi';
 import User from '../models/User.js';
-import { authenticate, requireAdmin } from '../middleware/auth.js';
+import { authenticate, requireAdmin, allowSelfOrAdmin } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -111,7 +111,7 @@ router.get('/:id', authenticate, requireAdmin, async (req, res, next) => {
 });
 
 // PATCH /api/users/:id - Update a user's details
-router.patch('/:id', authenticate, requireAdmin, async (req, res, next) => {
+router.patch('/:id', authenticate, allowSelfOrAdmin, async (req, res, next) => {
   try {
     const userId = parseInt(req.params.id);
 

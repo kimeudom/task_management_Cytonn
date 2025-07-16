@@ -350,3 +350,22 @@ export const authenticateAllowUnverified = async (req, res, next) => {
     next(error);
   }
 };
+/**
+ * Middleware to allow action if user is the target resource owner or an admin.
+ */
+export const allowSelfOrAdmin = (req, res, next) => {
+  const userId = parseInt(req.params.id, 10);
+
+  if (isNaN(userId)) {
+    return res.status(400).json({ error: 'Invalid user ID in URL' });
+  }
+
+  if (req.user && (req.user.id === userId || req.user.role.toLowerCase() === 'admin')) {
+    return next();
+  }
+
+  return res.status(403).json({
+    error: 'Insufficient permissions',
+    code: 'INSUFFICIENT_PERMISSIONS'
+  });
+};
