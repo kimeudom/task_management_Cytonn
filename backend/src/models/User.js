@@ -89,6 +89,24 @@ class User {
     }
   }
 
+  // Find user by username
+  static async findByUsername(username) {
+    const query = `
+      SELECT u.user_id, u.username, u.email, u.password_hash, u.first_name, u.middle_and_other_name, u.last_name,
+             u.role_id, r.role_name, u.status, u.is_verified, u.created_at, u.updated_at
+      FROM users u
+      LEFT JOIN roles r ON u.role_id = r.role_id
+      WHERE u.username = $1 AND u.status = 'active'
+    `;
+
+    try {
+      const result = await pool.query(query, [username]);
+      return result.rows.length > 0 ? new User(result.rows[0]) : null;
+    } catch (error) {
+      throw error;
+    }
+  }
+
   // Get all users with pagination
   static async findAll(page = 1, limit = 10, roleName = null) {
     const offset = (page - 1) * limit;

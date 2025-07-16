@@ -31,6 +31,62 @@ const updateUserSchema = Joi.object({
   status: Joi.string().valid('active', 'suspended', 'deleted')
 }).min(1);
 
+const changePasswordSchema = Joi.object({
+  newPassword: Joi.string()
+    .min(8)
+    .max(128)
+    .pattern(new RegExp('^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]'))
+    .required()
+    .messages({
+      'string.min': 'Password must be at least 8 characters long',
+      'string.max': 'Password must not exceed 128 characters',
+      'string.pattern.base': 'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&)'
+    }),
+  confirmPassword: Joi.string()
+    .valid(Joi.ref('newPassword'))
+    .required()
+    .messages({
+      'any.only': 'Passwords do not match'
+    })
+});
+
+// GET /api/users/check-username - Check if username is available
+router.get('/check-username', authenticate, async (req, res, next) => {
+  try {
+    const { username } = req.query;
+
+    if (!username) {
+      return res.status(400).json({
+        error: 'Username parameter is required'
+      });
+    }
+
+    // Validate username format
+    const usernameSchema = Joi.string().min(3).max(50);
+    const { error } = usernameSchema.validate(username);
+    if (error) {
+      return res.status(400).json({
+        error: 'Invalid username format',
+        details: error.details.map(d => d.message)
+      });
+    }
+
+    // Check if username exists
+    const existingUser = await User.findByUsername(username);
+    const isAvailable = !existingUser;
+
+    res.json({
+      success: true,
+      data: {
+        username,
+        available: isAvailable
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // GET /api/users - Retrieve all users in the system
 router.get('/', authenticate, requireAdmin, async (req, res, next) => {
   try {
@@ -167,10 +223,68 @@ router.patch('/:id', authenticate, allowSelfOrAdmin, async (req, res, next) => {
     });
   } catch (error) {
     if (error.code === '23505') { // Unique constraint violation
-      return res.status(409).json({
-        error: 'Email already exists'
+      // Check which field caused the constraint violation
+      const errorMessage = error.detail || error.message || '';
+      if (errorMessage.includes('username')) {
+        return res.status(409).json({
+          error: 'Username already exists',
+          code: 'USERNAME_EXISTS'
+        });
+      } else if (errorMessage.includes('email')) {
+        return res.status(409).json({
+          error: 'Email already exists',
+          code: 'EMAIL_EXISTS'
+        });
+      } else {
+        return res.status(409).json({
+          error: 'Username or email already exists',
+          code: 'DUPLICATE_FIELD'
+        });
+      }
+    }
+    next(error);
+  }
+});
+
+// PATCH /api/users/:id/password - Change user password
+router.patch('/:id/password', authenticate, allowSelfOrAdmin, async (req, res, next) => {
+  try {
+    const userId = parseInt(req.params.id);
+
+    if (isNaN(userId)) {
+      return res.status(400).json({ error: 'Invalid user ID' });
+    }
+
+    // Validate request body
+    const { error, value } = changePasswordSchema.validate(req.body);
+    if (error) {
+      return res.status(400).json({
+        error: 'Password validation failed',
+        details: error.details.map(d => d.message),
+        code: 'VALIDATION_ERROR'
       });
     }
+
+    const { newPassword } = value;
+
+    // Get user
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Update password
+    const success = await user.updatePassword(newPassword);
+    if (!success) {
+      return res.status(500).json({ error: 'Failed to update password' });
+    }
+
+    res.json({
+      success: true,
+      message: 'Password changed successfully'
+    });
+  } catch (error) {
+    console.error('Password change error:', error);
     next(error);
   }
 });

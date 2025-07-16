@@ -116,17 +116,15 @@
         </div>
         <div class="card-body">
           <form @submit.prevent="changePassword" class="space-y-4">
-            <div>
-              <label for="currentPassword" class="form-label">
-                Current Password
-              </label>
-              <input
-                id="currentPassword"
-                v-model="passwordForm.currentPassword"
-                type="password"
-                class="form-input"
-                required
-              />
+            <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-4">
+              <div class="flex items-center">
+                <svg class="w-5 h-5 text-blue-600 dark:text-blue-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                </svg>
+                <p class="text-sm text-blue-800 dark:text-blue-200">
+                  No current password verification required. Simply enter your new password.
+                </p>
+              </div>
             </div>
             
             <div>
@@ -140,6 +138,15 @@
                 class="form-input"
                 required
               />
+              <div v-if="passwordForm.newPassword" class="mt-2">
+                <div class="text-sm text-gray-600 dark:text-gray-400">
+                  Password strength:
+                  <span :class="passwordStrengthClass">{{ passwordStrengthText }}</span>
+                </div>
+                <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  Requirements: 8+ characters, uppercase, lowercase, number, special character (@$!%*?&)
+                </div>
+              </div>
             </div>
             
             <div>
@@ -248,7 +255,6 @@ const profileForm = reactive({
 })
 
 const passwordForm = reactive({
-  currentPassword: '',
   newPassword: '',
   confirmPassword: ''
 })
@@ -310,8 +316,13 @@ async function updateProfile() {
       toast.success('Profile updated successfully!');
       // If email changed, trigger verification
       if (profileForm.email !== authStore.user?.email) {
-        await apiService.auth.verifyEmail(profileForm.email);
-        toast.info('Please check your email to verify your new address.');
+        try {
+          await apiService.auth.resendVerification(profileForm.email);
+          toast.info('Please check your email to verify your new address.');
+        } catch (emailError) {
+          console.warn('Failed to send verification email:', emailError);
+          toast.warning('Profile updated but verification email could not be sent. Please try again later.');
+        }
       }
       await authStore.refreshUser();
       return response.data;
@@ -329,33 +340,58 @@ async function updateProfile() {
 async function changePassword() {
   try {
     passwordLoading.value = true;
-    if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
+
+    // Frontend validation
+    if (!passwordForm.newPassword || !passwordForm.confirmPassword) {
       toast.error('Please fill in all password fields.');
       return;
     }
+
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
       toast.error('New passwords do not match.');
       return;
     }
-    if (passwordForm.newPassword === passwordForm.currentPassword) {
-      toast.error('New password cannot be the same as the old password.');
+
+    if (passwordForm.newPassword.length < 8) {
+      toast.error('Password must be at least 8 characters long.');
       return;
     }
+
+    // Check password strength
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/;
+    if (!passwordRegex.test(passwordForm.newPassword)) {
+      toast.error('Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&).');
+      return;
+    }
+
     const userId = authStore.user?.id;
     if (!userId) throw new Error('User ID not found');
-    // Optionally, verify current password on backend if needed
-    // Update password using PATCH /users/:id
-    const response = await apiService.users.update(userId, { password: passwordForm.newPassword });
+
+    // Use the dedicated password change endpoint
+    const response = await apiService.users.changePassword(userId, {
+      newPassword: passwordForm.newPassword,
+      confirmPassword: passwordForm.confirmPassword
+    });
+
     if (response.data.success) {
       toast.success('Password changed successfully!');
-      passwordForm.currentPassword = '';
       passwordForm.newPassword = '';
       passwordForm.confirmPassword = '';
       return response.data;
     }
     throw new Error(response.data.message || 'Password update failed');
   } catch (error) {
-    toast.error(error.message || 'Password change error');
+    // Handle specific validation errors from backend
+    if (error.response?.data?.code === 'VALIDATION_ERROR') {
+      const details = error.response.data.details;
+      if (Array.isArray(details) && details.length > 0) {
+        toast.error(details[0]); // Show first validation error
+      } else {
+        toast.error('Password validation failed');
+      }
+    } else {
+      toast.error(error.response?.data?.error || error.message || 'Password change error');
+    }
     console.error('Password change error:', error);
     throw error;
   } finally {
@@ -390,6 +426,42 @@ const loadProfileData = () => {
     profileForm.username = user.username || ''
   }
 }
+
+// Password strength computation
+const passwordStrength = computed(() => {
+  const password = passwordForm.newPassword
+  if (!password) return 0
+
+  let score = 0
+
+  // Length check
+  if (password.length >= 8) score += 1
+  if (password.length >= 12) score += 1
+
+  // Character type checks
+  if (/[a-z]/.test(password)) score += 1
+  if (/[A-Z]/.test(password)) score += 1
+  if (/\d/.test(password)) score += 1
+  if (/[@$!%*?&]/.test(password)) score += 1
+
+  return score
+})
+
+const passwordStrengthText = computed(() => {
+  const strength = passwordStrength.value
+  if (strength <= 2) return 'Weak'
+  if (strength <= 4) return 'Medium'
+  if (strength <= 5) return 'Strong'
+  return 'Very Strong'
+})
+
+const passwordStrengthClass = computed(() => {
+  const strength = passwordStrength.value
+  if (strength <= 2) return 'text-red-600 font-medium'
+  if (strength <= 4) return 'text-yellow-600 font-medium'
+  if (strength <= 5) return 'text-green-600 font-medium'
+  return 'text-green-700 font-bold'
+})
 
 // Lifecycle
 onMounted(() => {

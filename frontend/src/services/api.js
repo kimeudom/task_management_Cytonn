@@ -125,7 +125,9 @@ export const apiService = {
     logout: () => api.post('/auth/logout'),
     refreshToken: (refreshToken) => api.post('/auth/refresh', { refreshToken }),
     me: () => api.get('/auth/me'),
-    verify: (token) => api.post('/auth/verify', { token })
+    verify: (token) => api.post('/auth/verify', { token }),
+    verifyEmail: (email) => api.post('/auth/resend-verification', { email }),
+    resendVerification: (email) => api.post('/auth/resend-verification', { email })
   },
   
   // Users
@@ -155,7 +157,8 @@ export const apiService = {
       return api.patch(`/users/${id}`, backendData)
     },
     delete: (id) => api.delete(`/users/${id}`),
-    isUsernameTaken: (username) => api.get(`/users/check-username`, { params: { username } })
+    isUsernameTaken: (username) => api.get(`/users/check-username`, { params: { username } }),
+    changePassword: (id, passwordData) => api.patch(`/users/${id}/password`, passwordData)
   },
   
   // Tasks
