@@ -171,14 +171,19 @@ router.patch('/:id', authenticate, requireManagerOrAdmin, async (req, res, next)
       return res.status(400).json({ error: 'Invalid task ID' });
     }
 
+    console.log('PATCH /api/tasks/:id - Request body:', req.body);
+
     // Validate request body
     const { error, value } = updateTaskSchema.validate(req.body);
     if (error) {
+      console.log('Validation error:', error.details);
       return res.status(400).json({
         error: 'Validation failed',
         details: error.details.map(d => d.message)
       });
     }
+
+    console.log('Validated data:', value);
 
     // Verify assigned users exist if provided
     if (value.assignedUsers && value.assignedUsers.length > 0) {
@@ -201,6 +206,8 @@ router.patch('/:id', authenticate, requireManagerOrAdmin, async (req, res, next)
     delete taskUpdateData.deadline;
     delete taskUpdateData.assignedUsers;
 
+    console.log('Task update data for model:', taskUpdateData);
+
     const task = await Task.update(taskId, taskUpdateData, req.user.id, req.user.role);
 
     if (!task) {
@@ -211,9 +218,11 @@ router.patch('/:id', authenticate, requireManagerOrAdmin, async (req, res, next)
     if (value.assignedUsers && value.assignedUsers.length > 0) {
       try {
         await Task.updateAssignments(taskId, value.assignedUsers, req.user.id);
+        console.log('Task assignments updated successfully');
       } catch (assignmentError) {
         console.error('Failed to update task assignments:', assignmentError);
         // Don't fail the entire update if assignment update fails
+        // But log the error for debugging
       }
     }
 
@@ -238,9 +247,22 @@ router.patch('/:id', authenticate, requireManagerOrAdmin, async (req, res, next)
       data: task.toJSON()
     });
   } catch (error) {
+    console.error('Error updating task:', error);
+    console.error('Error stack:', error.stack);
+
     if (error.message.includes('Insufficient permissions')) {
       return res.status(403).json({ error: error.message });
     }
+
+    // Provide more specific error messages
+    if (error.code === '42703') {
+      return res.status(500).json({
+        error: 'Database column error',
+        message: 'There was an issue with the database structure. Please contact support.',
+        details: error.message
+      });
+    }
+
     next(error);
   }
 });
