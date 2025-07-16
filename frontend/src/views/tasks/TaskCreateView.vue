@@ -122,7 +122,7 @@
                         :key="userId"
                         class="inline-flex items-center px-2 py-1 bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-200 text-xs rounded-full"
                       >
-                        {{ getUserById(userId)?.name || 'Unknown' }}
+                        {{ getUserDisplayName(userId) }}
                         <button
                           @click="removeUser(userId)"
                           class="ml-1 text-blue-600 dark:text-blue-300 hover:text-blue-800 dark:hover:text-blue-100"
@@ -299,6 +299,26 @@ const getUserById = (id) => {
   return availableUsers.value.find(user => user.id == id)
 }
 
+const getUserDisplayName = (userId) => {
+  const user = getUserById(userId)
+  if (!user) return 'Unknown User'
+
+  // Try different name combinations
+  if (user.name && user.name !== 'Unknown User') {
+    return user.name
+  }
+
+  const firstName = user.firstName || ''
+  const lastName = user.lastName || ''
+  const fullName = `${firstName} ${lastName}`.trim()
+
+  if (fullName) {
+    return fullName
+  }
+
+  return user.username || user.email || 'Unknown User'
+}
+
 const toggleUser = (userId) => {
   const index = form.assignedUsers.indexOf(userId)
   if (index > -1) {
@@ -392,9 +412,11 @@ const createTask = withErrorHandling(async () => {
       title: form.title.trim(),
       description: form.description.trim() || '',
       priority: form.priority,
-      deadline: form.deadline || null,
+      deadline: form.deadline ? new Date(form.deadline).toISOString() : null,
       assignedUsers: form.assignedUsers // Backend expects array of user IDs
     }
+
+    console.log('Creating task with data:', taskData)
 
     // Use the service validation
     const validation = taskService.validateTaskData(taskData)
@@ -404,12 +426,20 @@ const createTask = withErrorHandling(async () => {
     }
 
     const newTask = await taskService.createTask(taskData)
-    
+
     toast.success('Task created successfully!')
     router.push({ name: 'task-detail', params: { id: newTask.id } })
   } catch (error) {
     console.error('Error creating task:', error)
-    toast.error(error.message || 'Failed to create task')
+
+    // Provide more specific error messages
+    if (error.message.includes('validation')) {
+      toast.error('Please check all required fields and try again')
+    } else if (error.message.includes('permission')) {
+      toast.error('You do not have permission to create tasks')
+    } else {
+      toast.error(error.message || 'Failed to create task')
+    }
   } finally {
     submitting.value = false
   }
@@ -418,15 +448,20 @@ const createTask = withErrorHandling(async () => {
 // Load users for assignment
 const loadUsers = withErrorHandling(async () => {
   loadingUsers.value = true
-  
+
   try {
-    // Get all users or use specific endpoint if available
-    const response = await userService.getUsers({ limit: 100 })
-    
-    // Filter out inactive users and current user if needed
-    availableUsers.value = response.users.filter(user => 
-      user.status !== 'inactive' && user.status !== 'suspended'
+    // Use the specific endpoint for assignment
+    const users = await userService.getUsersForAssignment()
+
+    // Filter out inactive users and ensure we have valid user data
+    availableUsers.value = users.filter(user =>
+      user.id &&
+      user.name &&
+      user.name !== 'Unknown User' &&
+      (!user.status || (user.status !== 'inactive' && user.status !== 'suspended'))
     )
+
+    console.log('Loaded users for assignment:', availableUsers.value.length)
   } catch (error) {
     console.error('Error loading users:', error)
     toast.error('Failed to load users for assignment')

@@ -16,13 +16,18 @@ export const transformUserFromBackend = (backendUser) => {
     3: 'user'
   }
 
+  const firstName = backendUser.firstName || backendUser.first_name || '';
+  const lastName = backendUser.lastName || backendUser.last_name || '';
+  const fullName = `${firstName} ${lastName}`.trim() || backendUser.username || 'Unknown User';
+
   return {
     id: backendUser.id || backendUser.user_id,
     username: backendUser.username,
     email: backendUser.email,
-    firstName: backendUser.firstName || backendUser.first_name,
+    firstName: firstName,
     middleName: backendUser.middleName || backendUser.middle_and_other_name || '',
-    lastName: backendUser.lastName || backendUser.last_name,
+    lastName: lastName,
+    name: fullName, // Add computed full name for easier display
     role: backendUser.role || backendUser.role_name || roleMap[backendUser.roleId || backendUser.role_id] || 'user',
     roleName: backendUser.roleName || backendUser.role_name || backendUser.role || roleMap[backendUser.roleId || backendUser.role_id] || 'user',
     roleId: backendUser.roleId || backendUser.role_id,
@@ -91,6 +96,22 @@ export const transformTaskFromBackend = (backendTask) => {
     4: 'urgent'
   }
 
+  // Transform assigned users to ensure proper display
+  const assignedUsers = (backendTask.assignedUsers || []).map(user => {
+    if (typeof user === 'object' && user !== null) {
+      return transformUserFromBackend(user);
+    }
+    return user; // If it's just an ID, keep it as is
+  });
+
+  // Create proper display names for assigned users
+  const assignedUserNames = assignedUsers.map(user => {
+    if (typeof user === 'object' && user !== null) {
+      return user.name || `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username || 'Unknown';
+    }
+    return 'Unknown';
+  }).filter(name => name !== 'Unknown');
+
   return {
     id: backendTask.id || backendTask.task_id,
     title: backendTask.title,
@@ -102,14 +123,14 @@ export const transformTaskFromBackend = (backendTask) => {
     createdAt: backendTask.createdAt || backendTask.created_at,
     updatedAt: backendTask.updatedAt || backendTask.updated_at,
     createdBy: backendTask.createdBy || backendTask.created_by,
-    assignedUsers: backendTask.assignedUsers || [],
+    assignedUsers: assignedUsers,
     // Computed properties for easier frontend use
-    assignedTo: backendTask.assignedUsers?.[0],
-    assignedToName: backendTask.assignedUsers?.length > 0 ?
-      `${backendTask.assignedUsers.length} user(s)` :
+    assignedTo: assignedUsers[0],
+    assignedToName: assignedUserNames.length > 0 ?
+      assignedUserNames.join(', ') :
       'Unassigned',
     createdByName: backendTask.creator ?
-      `${backendTask.creator.firstName || backendTask.creator.first_name} ${backendTask.creator.lastName || backendTask.creator.last_name}` :
+      `${backendTask.creator.firstName || backendTask.creator.first_name || ''} ${backendTask.creator.lastName || backendTask.creator.last_name || ''}`.trim() || backendTask.creator.username || 'Unknown' :
       'Unknown'
   }
 }

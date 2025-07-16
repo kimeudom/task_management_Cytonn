@@ -166,28 +166,49 @@ export const apiService = {
     getAll: (params = {}) => api.get('/tasks', { params }),
     getById: (id) => api.get(`/tasks/${id}`),
     create: (taskData) => {
+      // Map frontend priority strings to backend integers
+      const priorityMap = {
+        'low': 1,
+        'medium': 2,
+        'high': 3,
+        'urgent': 4
+      }
+
       // Map frontend data to backend structure
       const backendData = {
         title: taskData.title,
         description: taskData.description || '',
-        priority: parseInt(taskData.priority) || 1, // Backend expects integer
+        priority: priorityMap[taskData.priority] || parseInt(taskData.priority) || 2, // Default to medium
         deadline: taskData.deadline || taskData.dueDate,
         assignedUsers: taskData.assignedUsers || (taskData.assignedTo ? [taskData.assignedTo] : [])
       }
+
+      console.log('API: Creating task with backend data:', backendData)
       return api.post('/tasks', backendData)
     },
     update: (id, taskData) => {
+      // Map frontend priority strings to backend integers
+      const priorityMap = {
+        'low': 1,
+        'medium': 2,
+        'high': 3,
+        'urgent': 4
+      }
+
       // Map frontend data to backend structure
       const backendData = {
         title: taskData.title,
         description: taskData.description,
-        priority: taskData.priority ? parseInt(taskData.priority) : undefined,
+        priority: taskData.priority ? (priorityMap[taskData.priority] || parseInt(taskData.priority)) : undefined,
         status: taskData.status,
         deadline: taskData.deadline || taskData.dueDate,
         assignedUsers: taskData.assignedUsers || (taskData.assignedTo ? [taskData.assignedTo] : undefined)
       }
+
       // Remove undefined values
       Object.keys(backendData).forEach(key => backendData[key] === undefined && delete backendData[key])
+
+      console.log('API: Updating task with backend data:', backendData)
       return api.patch(`/tasks/${id}`, backendData)
     },
     delete: (id) => api.delete(`/tasks/${id}`),

@@ -663,10 +663,18 @@ const viewTask = async (task) => {
   }
 
   try {
+    console.log('TasksView: Navigating to view task:', task.id)
     await router.push(`/tasks/${task.id}`)
   } catch (error) {
-    console.error('Navigation error:', error)
-    toast.error('Failed to navigate to task view')
+    console.error('TasksView: Navigation error:', error)
+
+    // Try alternative navigation method
+    try {
+      window.location.href = `/tasks/${task.id}`
+    } catch (fallbackError) {
+      console.error('TasksView: Fallback navigation failed:', fallbackError)
+      toast.error('Failed to navigate to task view')
+    }
   }
 }
 
@@ -681,16 +689,24 @@ const editTask = async (task) => {
     toast.warning('You do not have permission to edit this task')
     return
   }
-  
+
   try {
+    console.log('TasksView: Navigating to edit task:', task.id)
     // Navigate to edit page
-    await router.push({ 
-      name: 'task-edit', 
-      params: { id: task.id }
+    await router.push({
+      name: 'task-edit',
+      params: { id: task.id.toString() }
     })
   } catch (error) {
-    console.error('Navigation error:', error)
-    toast.error('Failed to navigate to edit page')
+    console.error('TasksView: Navigation error:', error)
+
+    // Try alternative navigation method
+    try {
+      window.location.href = `/tasks/${task.id}/edit`
+    } catch (fallbackError) {
+      console.error('TasksView: Fallback navigation failed:', fallbackError)
+      toast.error('Failed to navigate to edit page')
+    }
   }
 }
 
@@ -726,13 +742,34 @@ const deleteTask = withErrorHandling(async (task) => {
   }
 
   if (confirm(`Are you sure you want to delete "${task.title}"? This action cannot be undone.`)) {
-    await taskService.deleteTask(task.id)
+    try {
+      console.log('Deleting task:', task.id)
+      await taskService.deleteTask(task.id)
 
-    // Remove from local list
-    tasks.value = tasks.value.filter(t => t.id !== task.id)
-    totalTasks.value = Math.max(0, totalTasks.value - 1)
+      // Remove from local list
+      tasks.value = tasks.value.filter(t => t.id !== task.id)
+      totalTasks.value = Math.max(0, totalTasks.value - 1)
 
-    toast.success('Task deleted successfully')
+      toast.success('Task deleted successfully')
+
+      // Refresh the task list to ensure consistency
+      await fetchTasks()
+    } catch (error) {
+      console.error('Delete task error:', error)
+
+      // Provide specific error messages based on error type
+      if (error.message.includes('permission')) {
+        toast.error('You do not have permission to delete this task')
+      } else if (error.message.includes('not found')) {
+        toast.error('Task not found or already deleted')
+        // Refresh the list to remove stale data
+        await fetchTasks()
+      } else if (error.response?.status === 500) {
+        toast.error('Server error occurred while deleting task. Please try again.')
+      } else {
+        toast.error(error.message || 'Failed to delete task')
+      }
+    }
   }
 }, { context: 'Deleting task' })
 

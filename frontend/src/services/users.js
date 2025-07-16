@@ -144,16 +144,22 @@ class UserService {
   async getUsersForAssignment() {
     try {
       const response = await apiService.users.getAll({ limit: 100 })
-      
+
       if (response.data.success) {
-        return response.data.data.map(user => ({
-          id: user.id || user.user_id,
-          name: `${user.firstName || user.first_name} ${user.lastName || user.last_name}`,
-          email: user.email,
-          role: user.role || user.roleName || user.role_name
-        }))
+        return response.data.data.map(user => {
+          const transformedUser = transformUserFromBackend(user);
+          return {
+            id: transformedUser.id,
+            name: transformedUser.name,
+            firstName: transformedUser.firstName,
+            lastName: transformedUser.lastName,
+            username: transformedUser.username,
+            email: transformedUser.email,
+            role: transformedUser.role
+          };
+        }).filter(user => user.id && user.name && user.name !== 'Unknown User')
       }
-      
+
       throw new Error(response.data.message || 'Failed to fetch users')
     } catch (error) {
       console.error('Error fetching users for assignment:', error)

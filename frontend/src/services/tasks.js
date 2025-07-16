@@ -68,18 +68,32 @@ class TaskService {
    */
   async createTask(taskData) {
     try {
+      console.log('TaskService: Creating task with data:', taskData)
+
       // Transform frontend data to backend format
       const backendData = transformTaskToBackend(taskData)
-      
+      console.log('TaskService: Transformed backend data:', backendData)
+
       const response = await apiService.tasks.create(backendData)
-      
+
       if (response.data.success) {
-        return transformTaskFromBackend(response.data.data)
+        const createdTask = transformTaskFromBackend(response.data.data)
+        console.log('TaskService: Task created successfully:', createdTask.id)
+        return createdTask
       }
-      
+
       throw new Error(response.data.message || 'Failed to create task')
     } catch (error) {
-      console.error('Error creating task:', error)
+      console.error('TaskService: Error creating task:', error)
+
+      // Provide more specific error messages
+      if (error.response?.status === 400) {
+        const errorData = error.response.data
+        if (errorData.details && Array.isArray(errorData.details)) {
+          throw new Error(errorData.details.join(', '))
+        }
+      }
+
       throw this.handleError(error)
     }
   }
@@ -92,18 +106,36 @@ class TaskService {
    */
   async updateTask(id, taskData) {
     try {
+      console.log('TaskService: Updating task', id, 'with data:', taskData)
+
       // Transform frontend data to backend format
       const backendData = transformTaskToBackend(taskData)
-      
+      console.log('TaskService: Transformed backend data:', backendData)
+
       const response = await apiService.tasks.update(id, backendData)
-      
+
       if (response.data.success) {
-        return transformTaskFromBackend(response.data.data)
+        const updatedTask = transformTaskFromBackend(response.data.data)
+        console.log('TaskService: Task updated successfully')
+        return updatedTask
       }
-      
+
       throw new Error(response.data.message || 'Failed to update task')
     } catch (error) {
-      console.error('Error updating task:', error)
+      console.error('TaskService: Error updating task:', error)
+
+      // Provide more specific error messages
+      if (error.response?.status === 400) {
+        const errorData = error.response.data
+        if (errorData.details && Array.isArray(errorData.details)) {
+          throw new Error(errorData.details.join(', '))
+        }
+      } else if (error.response?.status === 403) {
+        throw new Error('You do not have permission to update this task')
+      } else if (error.response?.status === 404) {
+        throw new Error('Task not found')
+      }
+
       throw this.handleError(error)
     }
   }
@@ -115,15 +147,27 @@ class TaskService {
    */
   async deleteTask(id) {
     try {
+      console.log('TaskService: Deleting task with ID:', id)
       const response = await apiService.tasks.delete(id)
-      
+
       if (response.data.success) {
+        console.log('TaskService: Task deleted successfully')
         return true
       }
-      
+
       throw new Error(response.data.message || 'Failed to delete task')
     } catch (error) {
-      console.error('Error deleting task:', error)
+      console.error('TaskService: Error deleting task:', error)
+
+      // Provide more specific error handling
+      if (error.response?.status === 404) {
+        throw new Error('Task not found or already deleted')
+      } else if (error.response?.status === 403) {
+        throw new Error('You do not have permission to delete this task')
+      } else if (error.response?.status === 500) {
+        throw new Error('Server error occurred while deleting task')
+      }
+
       throw this.handleError(error)
     }
   }

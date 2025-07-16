@@ -90,8 +90,19 @@
                 v-model="profileForm.username"
                 type="text"
                 class="form-input"
+                :class="{ 'border-red-500': usernameError, 'border-green-500': usernameAvailable && profileForm.username !== authStore.user?.username }"
                 required
+                @input="checkUsernameAvailability"
               />
+              <div v-if="usernameChecking" class="mt-1 text-sm text-gray-500">
+                Checking availability...
+              </div>
+              <div v-else-if="usernameError" class="mt-1 text-sm text-red-600">
+                {{ usernameError }}
+              </div>
+              <div v-else-if="usernameAvailable && profileForm.username !== authStore.user?.username" class="mt-1 text-sm text-green-600">
+                Username is available!
+              </div>
             </div>
             
             <div class="flex justify-end">
@@ -246,6 +257,9 @@ const toast = useToast()
 const profileLoading = ref(false)
 const passwordLoading = ref(false)
 const settingsLoading = ref(false)
+const usernameChecking = ref(false)
+const usernameAvailable = ref(false)
+const usernameError = ref('')
 
 const profileForm = reactive({
   firstName: '',
@@ -316,20 +330,56 @@ async function updateProfile() {
       toast.success('Profile updated successfully!');
       // If email changed, trigger verification
       if (profileForm.email !== authStore.user?.email) {
-        try {
-          await apiService.auth.resendVerification(profileForm.email);
-          toast.info('Please check your email to verify your new address.');
-        } catch (emailError) {
-          console.warn('Failed to send verification email:', emailError);
-          toast.warning('Profile updated but verification email could not be sent. Please try again later.');
-        }
+        // Wait a moment for the database to update, then try to send verification
+        setTimeout(async () => {
+          try {
+            await apiService.auth.resendVerification(profileForm.email);
+            toast.info('Please check your email to verify your new address.');
+          } catch (emailError) {
+            console.warn('Failed to send verification email:', emailError);
+            // Handle specific error cases
+            if (emailError.response?.data?.code === 'ALREADY_VERIFIED') {
+              toast.info('Your new email address is already verified.');
+            } else if (emailError.response?.data?.code === 'USER_NOT_FOUND') {
+              toast.info('Profile updated successfully. You can manually request email verification if needed.');
+            } else {
+              // Don't show error for verification email failure - it's not critical
+              console.log('Email verification will be available later');
+            }
+          }
+        }, 1000); // Wait 1 second for database update
       }
       await authStore.refreshUser();
       return response.data;
     }
     throw new Error(response.data.message || 'Profile update failed');
   } catch (error) {
-    toast.error(error.message || 'Profile update error');
+    // Handle specific error cases
+    if (error.response?.status === 409) {
+      const errorCode = error.response.data?.code;
+      const errorMessage = error.response.data?.error;
+
+      if (errorCode === 'USERNAME_EXISTS') {
+        toast.error('This username is already taken. Please choose a different username.');
+      } else if (errorCode === 'EMAIL_EXISTS') {
+        toast.error('This email address is already registered. Please use a different email.');
+      } else if (errorMessage?.includes('username')) {
+        toast.error('This username is already taken. Please choose a different username.');
+      } else if (errorMessage?.includes('email')) {
+        toast.error('This email address is already registered. Please use a different email.');
+      } else {
+        toast.error('The username or email you entered is already in use.');
+      }
+    } else if (error.response?.data?.code === 'VALIDATION_ERROR') {
+      const details = error.response.data.details;
+      if (Array.isArray(details) && details.length > 0) {
+        toast.error(details[0]); // Show first validation error
+      } else {
+        toast.error('Please check your input and try again.');
+      }
+    } else {
+      toast.error(error.response?.data?.error || error.message || 'Profile update error');
+    }
     console.error('Profile update error:', error);
     throw error;
   } finally {
@@ -462,6 +512,60 @@ const passwordStrengthClass = computed(() => {
   if (strength <= 5) return 'text-green-600 font-medium'
   return 'text-green-700 font-bold'
 })
+
+// Username availability checking with debounce
+let usernameCheckTimeout = null
+const checkUsernameAvailability = async () => {
+  const username = profileForm.username.trim()
+
+  // Reset states
+  usernameError.value = ''
+  usernameAvailable.value = false
+
+  // Don't check if username is empty or same as current
+  if (!username || username === authStore.user?.username) {
+    return
+  }
+
+  // Basic validation
+  if (username.length < 3) {
+    usernameError.value = 'Username must be at least 3 characters long'
+    return
+  }
+
+  if (username.length > 50) {
+    usernameError.value = 'Username must not exceed 50 characters'
+    return
+  }
+
+  // Clear previous timeout
+  if (usernameCheckTimeout) {
+    clearTimeout(usernameCheckTimeout)
+  }
+
+  // Debounce the API call
+  usernameCheckTimeout = setTimeout(async () => {
+    try {
+      usernameChecking.value = true
+      const response = await apiService.users.isUsernameTaken(username)
+
+      if (response.data.success) {
+        if (response.data.data.available) {
+          usernameAvailable.value = true
+          usernameError.value = ''
+        } else {
+          usernameAvailable.value = false
+          usernameError.value = 'This username is already taken'
+        }
+      }
+    } catch (error) {
+      console.error('Username check error:', error)
+      usernameError.value = 'Unable to check username availability'
+    } finally {
+      usernameChecking.value = false
+    }
+  }, 500) // 500ms debounce
+}
 
 // Lifecycle
 onMounted(() => {

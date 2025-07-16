@@ -28,7 +28,7 @@
         <div>
           <label for="priority" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Priority</label>
           <select id="priority" v-model="task.priority" class="mt-1 block w-full form-select">
-            <option v-for="p in priorities" :key="p" :value="p">{{ p }}</option>
+            <option v-for="p in priorities" :key="p" :value="p">{{ getPriorityLabel(p) }}</option>
           </select>
         </div>
         <div>
@@ -38,8 +38,13 @@
         <div>
           <label for="assignedUsers" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Assign Users</label>
           <select id="assignedUsers" v-model="task.assignedUsers" multiple class="mt-1 block w-full form-multiselect">
-            <option v-for="user in availableUsers" :key="user.id" :value="user.id">{{ user.name }}</option>
+            <option v-for="user in availableUsers" :key="user.id" :value="user.id">
+              {{ getUserDisplayName(user) }}
+            </option>
           </select>
+          <div class="mt-2 text-sm text-gray-500">
+            Hold Ctrl/Cmd to select multiple users
+          </div>
         </div>
         <div class="flex justify-end space-x-4">
           <button type="button" @click="goBack" class="btn-outline">Cancel</button>
@@ -80,6 +85,16 @@ const isSubmitting = ref(false)
 
 const priorities = ['low', 'medium', 'high', 'urgent']
 
+const getPriorityLabel = (priority) => {
+  const labels = {
+    'low': 'Low',
+    'medium': 'Medium',
+    'high': 'High',
+    'urgent': 'Urgent'
+  }
+  return labels[priority] || priority
+}
+
 const fetchTask = async () => {
   try {
     loading.value = true
@@ -95,7 +110,13 @@ const fetchTask = async () => {
     Object.assign(task, {
       ...fetchedTask,
       deadline: fetchedTask.deadline ? new Date(fetchedTask.deadline).toISOString().slice(0, 16) : '',
-      assignedUsers: fetchedTask.assignedUsers.map(u => u.id),
+      assignedUsers: fetchedTask.assignedUsers ? fetchedTask.assignedUsers.map(u => u.id || u) : [],
+    })
+
+    console.log('TaskEditView: Loaded task:', {
+      id: fetchedTask.id,
+      title: fetchedTask.title,
+      assignedUsers: task.assignedUsers
     })
   } catch (err) {
     error.value = err.message || 'Failed to load task details.'
@@ -107,8 +128,15 @@ const fetchTask = async () => {
 
 const fetchUsers = async () => {
   try {
-    availableUsers.value = await userService.getUsersForAssignment()
+    const users = await userService.getUsersForAssignment()
+    availableUsers.value = users.filter(user =>
+      user.id &&
+      user.name &&
+      user.name !== 'Unknown User'
+    )
+    console.log('TaskEditView: Loaded users for assignment:', availableUsers.value.length)
   } catch (err) {
+    console.error('TaskEditView: Failed to load users:', err)
     toast.error('Failed to load users.')
   }
 }
@@ -117,17 +145,46 @@ const updateTask = async () => {
   isSubmitting.value = true
   try {
     const taskId = route.params.id
-    await taskService.updateTask(taskId, {
-      ...task,
+
+    // Prepare update data
+    const updateData = {
+      title: task.title,
+      description: task.description,
+      priority: task.priority,
       deadline: task.deadline ? new Date(task.deadline).toISOString() : null,
-    })
+      assignedUsers: task.assignedUsers
+    }
+
+    console.log('TaskEditView: Updating task with data:', updateData)
+
+    await taskService.updateTask(taskId, updateData)
     toast.success('Task updated successfully!')
     router.push({ name: 'task-detail', params: { id: taskId } })
   } catch (err) {
+    console.error('TaskEditView: Update failed:', err)
     toast.error(err.message || 'Failed to update task.')
   } finally {
     isSubmitting.value = false
   }
+}
+
+const getUserDisplayName = (user) => {
+  if (!user) return 'Unknown User'
+
+  // Try different name combinations
+  if (user.name && user.name !== 'Unknown User') {
+    return user.name
+  }
+
+  const firstName = user.firstName || ''
+  const lastName = user.lastName || ''
+  const fullName = `${firstName} ${lastName}`.trim()
+
+  if (fullName) {
+    return fullName
+  }
+
+  return user.username || user.email || 'Unknown User'
 }
 
 const goBack = () => {

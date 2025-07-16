@@ -109,7 +109,11 @@ const routes = [
   {
     path: '/tasks/:id/edit',
     name: 'task-edit',
-    component: () => import('@/views/tasks/TaskEditView.vue'),
+    component: () => import('@/views/tasks/TaskEditView.vue').catch(err => {
+      console.error('Failed to load TaskEditView:', err);
+      // Fallback to a static import if dynamic import fails
+      return import('@/views/tasks/TaskEditView.vue');
+    }),
     meta: {
       requiresAuth: true,
       permission: 'tasks.edit',
