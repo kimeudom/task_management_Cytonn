@@ -190,10 +190,31 @@ router.patch('/:id', authenticate, requireManagerOrAdmin, async (req, res, next)
       }
     }
 
-    const task = await Task.update(taskId, value, req.user.id, req.user.role);
+    // Transform the validated data to match Task model expectations
+    const taskUpdateData = {
+      ...value,
+      dueDate: value.deadline, // Map deadline to dueDate for Task model
+      assignedTo: value.assignedUsers && value.assignedUsers.length > 0 ? value.assignedUsers[0] : null // For now, take first user
+    };
+
+    // Remove the original fields that don't match the model
+    delete taskUpdateData.deadline;
+    delete taskUpdateData.assignedUsers;
+
+    const task = await Task.update(taskId, taskUpdateData, req.user.id, req.user.role);
 
     if (!task) {
       return res.status(404).json({ error: 'Task not found' });
+    }
+
+    // Handle multiple user assignments if provided
+    if (value.assignedUsers && value.assignedUsers.length > 0) {
+      try {
+        await Task.updateAssignments(taskId, value.assignedUsers, req.user.id);
+      } catch (assignmentError) {
+        console.error('Failed to update task assignments:', assignmentError);
+        // Don't fail the entire update if assignment update fails
+      }
     }
 
     // Sub-task deadline validation
