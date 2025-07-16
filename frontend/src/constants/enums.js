@@ -13,15 +13,15 @@ export const USER_ROLES = {
 // Role ID mappings (for backward compatibility)
 export const ROLE_ID_MAP = {
   1: USER_ROLES.ADMIN,
-  2: USER_ROLES.USER,
-  3: USER_ROLES.MANAGER
+  2: USER_ROLES.MANAGER,
+  3: USER_ROLES.USER
 };
 
 // Reverse mapping
 export const ROLE_NAME_TO_ID = {
   [USER_ROLES.ADMIN]: 1,
-  [USER_ROLES.USER]: 2,
-  [USER_ROLES.MANAGER]: 3
+  [USER_ROLES.MANAGER]: 2,
+  [USER_ROLES.USER]: 3
 };
 
 // User Status
@@ -85,7 +85,7 @@ export const normalizeRole = (role) => {
 };
 
 export const getRoleId = (roleName) => {
-  return ROLE_NAME_TO_ID[roleName?.toLowerCase()] || 2;
+  return ROLE_NAME_TO_ID[roleName?.toLowerCase()] || 3;
 };
 
 export const getRoleName = (roleId) => {

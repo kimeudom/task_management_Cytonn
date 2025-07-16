@@ -12,8 +12,8 @@ export const transformUserFromBackend = (backendUser) => {
   // Map roleId to role name
   const roleMap = {
     1: 'admin',
-    2: 'user',
-    3: 'manager'
+    2: 'manager',
+    3: 'user'
   }
 
   return {
@@ -42,8 +42,8 @@ export const transformUserToBackend = (frontendUser) => {
   // Map role name to roleId
   const roleMap = {
     admin: 1,
-    user: 2,
-    manager: 3
+    manager: 2,
+    user: 3
   }
 
   const backendUser = {
@@ -51,7 +51,7 @@ export const transformUserToBackend = (frontendUser) => {
     email: frontendUser.email,
     firstName: frontendUser.firstName,
     lastName: frontendUser.lastName,
-    roleId: roleMap[frontendUser.role] || 2
+    roleId: roleMap[frontendUser.role] || 3
   }
 
   // Add middleName if provided

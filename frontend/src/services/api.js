@@ -134,10 +134,10 @@ export const apiService = {
     getById: (id) => api.get(`/users/${id}`),
     create: (userData) => {
       // Map frontend role names to backend roleId
-      const roleMap = { admin: 1, user: 2, manager: 3 }
+      const roleMap = { admin: 1, manager: 2, user: 3 }
       const backendData = {
         ...userData,
-        roleId: roleMap[userData.role] || 2 // default to user
+        roleId: roleMap[userData.role] || 3 // default to user
       }
       delete backendData.role
       delete backendData.status // backend doesn't use status in create
@@ -145,7 +145,7 @@ export const apiService = {
     },
     update: (id, userData) => {
       // Map frontend role names to backend roleId
-      const roleMap = { admin: 1, user: 2, manager: 3 }
+      const roleMap = { admin: 1, manager: 2, user: 3 }
       const backendData = {
         ...userData,
         roleId: roleMap[userData.role] || userData.roleId

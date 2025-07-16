@@ -3,7 +3,7 @@
  * Helps debug authentication and token issues
  */
 
-import { authService } from '@/services/auth'
+import authService from '@/services/auth'
 import { apiService } from '@/services/api'
 
 /**
