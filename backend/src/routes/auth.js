@@ -32,7 +32,7 @@ const registerSchema = Joi.object({
   firstName: Joi.string().min(2).max(50).required(),
   middleName: Joi.string().max(100).allow(''),
   lastName: Joi.string().min(2).max(50).required(),
-  roleId: Joi.number().integer().valid(1, 2, 3).default(2) // Default to User role
+  roleId: Joi.number().integer().valid(1, 2, 3).default(3) // Default to User role (1=Admin, 2=Manager, 3=User)
 });
 
 const refreshTokenSchema = Joi.object({

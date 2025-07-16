@@ -31,7 +31,7 @@ class User {
 
   // Create a new user
   static async create(userData) {
-    const { username, email, password, firstName, middleName, lastName, roleId = 2, isVerified = false } = userData;
+    const { username, email, password, firstName, middleName, lastName, roleId = 3, isVerified = false } = userData;
 
     // Hash password
     const saltRounds = 12;
@@ -146,7 +146,7 @@ class User {
 
   // Update user
   static async update(id, updateData) {
-    const allowedFields = ['email', 'firstName', 'lastName', 'role', 'isActive'];
+    const allowedFields = ['username', 'email', 'firstName', 'lastName', 'role', 'isActive'];
     const updates = [];
     const values = [];
     let paramCount = 0;

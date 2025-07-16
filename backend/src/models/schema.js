@@ -37,7 +37,7 @@ const createUsersTable = `
     first_name VARCHAR(100) NOT NULL,
     middle_and_other_name VARCHAR(100),
     last_name VARCHAR(100) NOT NULL,
-    role_id INTEGER NOT NULL DEFAULT 2,
+    role_id INTEGER NOT NULL DEFAULT 3,
     status VARCHAR(20) NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'suspended', 'deleted')),
     is_verified BOOLEAN DEFAULT false,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),

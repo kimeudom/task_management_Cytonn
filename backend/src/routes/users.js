@@ -18,7 +18,7 @@ const createUserSchema = Joi.object({
   firstName: Joi.string().min(2).max(50).required(),
   middleName: Joi.string().max(100).allow(''),
   lastName: Joi.string().min(2).max(50).required(),
-  roleId: Joi.number().integer().valid(1, 2, 3).default(2) // 1=Admin, 2=User, 3=Manager
+  roleId: Joi.number().integer().valid(1, 2, 3).default(3) // 1=Admin, 2=Manager, 3=User
 });
 
 const updateUserSchema = Joi.object({
